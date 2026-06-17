@@ -220,6 +220,8 @@ const VIEW_RENDERERS = {
 const navBtns = document.querySelectorAll(".nav-btn");
 navBtns.forEach(btn => {
   btn.addEventListener("click", () => {
+    // While customizing the sidebar, clicks reorder/hide instead of navigating.
+    if (document.querySelector(".nav").classList.contains("editing")) return;
     const view = btn.dataset.view;
     // Exactly one active nav entry (Req 20.2).
     navBtns.forEach(b => b.classList.remove("active"));
@@ -231,6 +233,145 @@ navBtns.forEach(btn => {
     document.getElementById("view-" + view).classList.add("active");
   });
 });
+
+/* ---------------- Sidebar customization: drag-to-reorder + hide/show ----------------
+   Lets the user reorder the sidebar nav entries and hide ones they don't use. The
+   chosen order (settings.navOrder) and hidden set (settings.navHidden) persist in
+   localStorage so the layout survives reloads. A "Customize menu" toggle puts the
+   nav into edit mode: entries become draggable and each shows an eye toggle; hidden
+   entries stay visible (greyed) while editing so they can be re-enabled. Outside edit
+   mode, hidden entries are removed from the sidebar. Pure DOM/handler layer — no new
+   pure logic. */
+(function setupNavCustomization() {
+  const navEl = document.querySelector(".nav");
+  if (!navEl) return;
+
+  function navSettings() {
+    if (!state.settings || typeof state.settings !== "object") state.settings = {};
+    if (!Array.isArray(state.settings.navOrder)) state.settings.navOrder = [];
+    if (!Array.isArray(state.settings.navHidden)) state.settings.navHidden = [];
+    return state.settings;
+  }
+  function allViews() {
+    return Array.from(navEl.querySelectorAll(".nav-btn")).map(b => b.dataset.view);
+  }
+  function isEditing() { return navEl.classList.contains("editing"); }
+
+  // Reorder the DOM to match navOrder (unknown/new views keep their markup order at
+  // the end) and toggle hidden visibility based on edit mode.
+  function applyNavCustomization() {
+    const s = navSettings();
+    const btns = Array.from(navEl.querySelectorAll(".nav-btn"));
+    const byView = {};
+    btns.forEach(b => { byView[b.dataset.view] = b; });
+    const ordered = [];
+    s.navOrder.forEach(v => { if (byView[v] && !ordered.includes(byView[v])) ordered.push(byView[v]); });
+    btns.forEach(b => { if (!ordered.includes(b)) ordered.push(b); });
+    ordered.forEach(b => navEl.appendChild(b));
+    const hidden = new Set(s.navHidden);
+    navEl.querySelectorAll(".nav-btn").forEach(b => {
+      const h = hidden.has(b.dataset.view);
+      b.classList.toggle("nav-item-hidden", h);          // greyed marker (always)
+      b.classList.toggle("nav-hidden", h && !isEditing()); // display:none only outside edit mode
+    });
+  }
+
+  function persistOrder() { navSettings().navOrder = allViews(); save(); }
+
+  // ---- drag to reorder (edit mode only) ----
+  let dragEl = null;
+  function dragAfter(y) {
+    const els = Array.from(navEl.querySelectorAll(".nav-btn:not(.dragging)"));
+    let best = null, bestOffset = Number.NEGATIVE_INFINITY;
+    for (const child of els) {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > bestOffset) { bestOffset = offset; best = child; }
+    }
+    return best;
+  }
+  navEl.addEventListener("dragstart", e => {
+    const btn = e.target.closest(".nav-btn");
+    if (!btn || !isEditing()) return;
+    dragEl = btn; btn.classList.add("dragging");
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+  });
+  navEl.addEventListener("dragover", e => {
+    if (!isEditing() || !dragEl) return;
+    e.preventDefault();
+    const after = dragAfter(e.clientY);
+    if (after == null) navEl.appendChild(dragEl);
+    else navEl.insertBefore(dragEl, after);
+  });
+  navEl.addEventListener("dragend", () => {
+    if (dragEl) dragEl.classList.remove("dragging");
+    dragEl = null;
+    persistOrder();
+  });
+
+  // ---- per-item hide/show toggle ----
+  function toggleHidden(view) {
+    const s = navSettings();
+    const hidden = new Set(s.navHidden);
+    if (hidden.has(view)) {
+      hidden.delete(view);
+    } else {
+      const visibleCount = allViews().filter(v => !hidden.has(v)).length;
+      if (visibleCount <= 1) return; // never hide the last visible entry
+      hidden.add(view);
+    }
+    s.navHidden = Array.from(hidden);
+    save();
+    // If the active view was just hidden, move to the first still-visible entry.
+    const active = navEl.querySelector(".nav-btn.active");
+    if (active && s.navHidden.includes(active.dataset.view)) {
+      const firstVisible = Array.from(navEl.querySelectorAll(".nav-btn"))
+        .find(b => !s.navHidden.includes(b.dataset.view));
+      if (firstVisible) {
+        navEl.classList.remove("editing"); // allow navigation, then restore edit mode
+        firstVisible.click();
+        navEl.classList.add("editing");
+      }
+    }
+    applyNavCustomization();
+    renderEditControls();
+  }
+
+  // Inject/remove the eye toggle and draggable attr per entry based on edit mode.
+  function renderEditControls() {
+    const editing = isEditing();
+    const s = navSettings();
+    navEl.querySelectorAll(".nav-btn").forEach(btn => {
+      btn.setAttribute("draggable", editing ? "true" : "false");
+      let eye = btn.querySelector(".nav-hide-toggle");
+      if (editing) {
+        if (!eye) {
+          eye = document.createElement("span");
+          eye.className = "nav-hide-toggle";
+          eye.addEventListener("click", ev => { ev.stopPropagation(); toggleHidden(btn.dataset.view); });
+          btn.appendChild(eye);
+        }
+        const isHidden = s.navHidden.includes(btn.dataset.view);
+        eye.textContent = isHidden ? "🚫" : "👁";
+        eye.title = isHidden ? "Show in sidebar" : "Hide from sidebar";
+      } else if (eye) {
+        eye.remove();
+      }
+    });
+  }
+
+  const customizeBtn = document.getElementById("customizeNavBtn");
+  if (customizeBtn) {
+    customizeBtn.addEventListener("click", () => {
+      const editing = navEl.classList.toggle("editing");
+      customizeBtn.textContent = editing ? "✓ Done customizing" : "✎ Customize menu";
+      applyNavCustomization();
+      renderEditControls();
+    });
+  }
+
+  applyNavCustomization(); // apply saved layout on load
+})();
 
 /* ---------------- Countdown ---------------- */
 const testDateInput = document.getElementById("testDateInput");

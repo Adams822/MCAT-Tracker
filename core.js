@@ -99,7 +99,9 @@ const defaultState = {
     diagnosticScore: null,
     weeklyAvailability: 0,
     preferredResources: "",
-    studyPhase: "content review"
+    studyPhase: "content review",
+    navOrder: [],                   // sidebar view order (view ids); [] = default markup order
+    navHidden: []                   // sidebar view ids hidden from the nav
   }
 };
 

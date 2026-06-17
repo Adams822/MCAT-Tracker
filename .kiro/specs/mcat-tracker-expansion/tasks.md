@@ -111,14 +111,14 @@ Task conventions:
   - [x] 5.5 [DOM] Add Practice Questions styles in `styles.css`
     - Reuse existing CSS custom properties (`html[data-theme]`); style form, list table, chart panels, empty states
     - _Requirements: 4.7_
-  - [ ] 5.6 [DOM] Unit tests for practice delete and list ordering
+  - [x] 5.6 [DOM] Unit tests for practice delete and list ordering
     - _Requirements: 3.7, 3.8_
 
 - [x] 6. Error Log enhancements (Req 6)
   - [x] 6.1 [PURE] Implement `isValidISODate`, `categoryCounts`, and `clampText`
     - `isValidISODate` strict calendar validity (rejects 2024-02-30); `categoryCounts` returns all 9 categories + `unset` (zeros included); `clampText(s, max)` returns last-valid truncation
     - _Requirements: 6.1, 6.5, 6.6, 6.7_
-  - [ ] 6.2 [PURE] Property tests: ISO date and category counts
+  - [x] 6.2 [PURE] Property tests: ISO date and category counts
     - **Property 11: ISO date validation is exact** — **Validates: Requirements 6.5**
     - **Property 12: Mistake-category counts are complete and total-preserving** — **Validates: Requirements 6.1, 6.7**
   - [x] 6.3 [DOM] Extend Wrong Answers view markup for new fields
@@ -179,14 +179,14 @@ Task conventions:
     - _Requirements: 5.3, 5.4, 5.5, 5.6, 5.7_
   - [x] 9.5 [DOM] Add Content Tracker styles in `styles.css`
     - _Requirements: 5.1_
-  - [ ] 9.6 [DOM] Smoke test: subject tree renders the four sections and groupings
+  - [x] 9.6 [DOM] Smoke test: subject tree renders the four sections and groupings
     - _Requirements: 5.1_
 
 - [x] 10. Dashboard enhancements (Req 9)
   - [x] 10.1 [PURE] Implement dashboard preview and goal-progress helpers
     - Dashboard lowest-accuracy preview = first `min(3, distinct topics)` of `weaknessRanking`; `weeklyHourProgress(sessions, goalHours, today)` and `dailyQuestionProgress(practiceSets, goalQ, today)`; reuse `dueCount` (from task 13.1) for due review count
     - _Requirements: 9.1, 9.2, 9.4_
-  - [ ] 10.2 [PURE] Property tests: weakness preview and goal progress
+  - [x] 10.2 [PURE] Property tests: weakness preview and goal progress
     - **Property 21: Dashboard weakness preview is a bounded prefix of the ranking** — **Validates: Requirements 9.2**
     - **Property 22: Goal progress percentages are correct** — **Validates: Requirements 9.4, 15.2, 15.3**
   - [x] 10.3 [DOM] Add new dashboard metric cards to the dashboard view markup
@@ -198,7 +198,7 @@ Task conventions:
   - [x] 10.5 [DOM] Add dashboard enhancement styles in `styles.css`
     - _Requirements: 9.6_
 
-- [ ] 11. Checkpoint — high-priority modules
+- [x] 11. Checkpoint — high-priority modules
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 12. CARS Practice Tracker (Req 10)
@@ -269,19 +269,19 @@ Task conventions:
   - [x] 15.5 [DOM] Add Formula sheet styles in `styles.css`
     - _Requirements: 13.1_
 
-- [ ] 16. High-Yield Notes (Req 14)
+- [x] 16. High-Yield Notes (Req 14)
   - [x] 16.1 [PURE] Implement `searchNotes` and linked-error existence check
     - Case-insensitive substring on title|body|any tag; helper to check whether a linked error id still exists in `state.wrong`; reuse `renderMarkdown` from task 3.4
     - _Requirements: 14.1, 14.3, 14.9_
-  - [ ] 16.2 [DOM] Add Notes view markup and nav entry
+  - [x] 16.2 [DOM] Add Notes view markup and nav entry
     - Nav entry + `<section id="view-notes">` with note editor (title, body textarea `maxlength="50000"`, tags, needs-review), search box, note list, and rendered-markdown preview area
     - _Requirements: 14.1, 14.2, 20.1_
-  - [ ] 16.3 [DOM] Implement `renderNotes` and handlers in `app.js`
+  - [x] 16.3 [DOM] Implement `renderNotes` and handlers in `app.js`
     - Store raw markdown verbatim; render via `renderMarkdown` at display time; search with empty-state; link to error-log entries with existence check ("linked entry unavailable", suppress navigation); persist needs-review
     - _Requirements: 14.4, 14.5, 14.6, 14.7, 14.8, 14.9_
   - [x] 16.4 [DOM] Add Notes styles in `styles.css`
     - _Requirements: 14.7_
-  - [ ] 16.5 [DOM] Unit tests: each markdown construct renders; targeted XSS examples
+  - [x] 16.5 [DOM] Unit tests: each markdown construct renders; targeted XSS examples
     - Headings, bold, italic, ordered/unordered lists, links, inline code; complement Property 35
     - _Requirements: 14.2_
 
@@ -295,7 +295,7 @@ Task conventions:
   - [x] 17.3 [DOM] Implement `renderGoals` and handlers in `app.js`
     - Validate target via `validateTarget` (reject + retain prior); `goals.targetScore` is the single source of truth for Dashboard and FL chart; milestone done-state persists across reloads
     - _Requirements: 15.2, 15.3, 15.4, 15.5, 15.6, 15.7_
-  - [ ] 17.4 [DOM] Add Goals styles in `styles.css`
+  - [x] 17.4 [DOM] Add Goals styles in `styles.css`
     - _Requirements: 15.1_
 
 - [x] 18. Daily Study Log (Req 16)
@@ -306,7 +306,7 @@ Task conventions:
     - **Property 38: Daily-log upsert keeps at most one entry per date** — **Validates: Requirements 16.2**
     - **Property 39: Daily-log entries are ordered most-recent-first** — **Validates: Requirements 16.5**
     - **Property 40: Daily-log validation** — **Validates: Requirements 16.3**
-  - [ ] 18.3 [DOM] Add Daily Log view markup and nav entry
+  - [x] 18.3 [DOM] Add Daily Log view markup and nav entry
     - Nav entry + `<section id="view-dailylog">` with entry form, the four reflection prompts, and the always-visible entry display area
     - _Requirements: 16.1, 16.4, 20.1_
   - [x] 18.4 [DOM] Implement `renderDailyLog` and handlers in `app.js`
@@ -331,7 +331,7 @@ Task conventions:
   - [x] 19.5 [DOM] Add Readiness styles in `styles.css`
     - _Requirements: 17.1_
 
-- [ ] 20. In-App Reminders (Req 18)
+- [x] 20. In-App Reminders (Req 18)
   - [x] 20.1 [PURE] Implement `computeReminders` and `isDismissedToday`
     - `computeReminders(state, today)` returns test-date countdown, each due Review_Item, each full-length event dated today, each Error_Log entry with retest date ≤ today; `isDismissedToday` checks `reminderDismissals[key]===today`; no network access
     - _Requirements: 18.1, 18.4, 18.5_
@@ -341,13 +341,13 @@ Task conventions:
   - [x] 20.3 [DOM] Add the persistent reminder bar markup
     - Add `<div id="reminderBar">` inside `.main` before the views so it shows on every view
     - _Requirements: 18.2_
-  - [ ] 20.4 [DOM] Implement `renderReminders` and dismissal handlers in `app.js`
+  - [x] 20.4 [DOM] Implement `renderReminders` and dismissal handlers in `app.js`
     - Recompute on load and after changes to test date, review items, events, or retest dates; filter dismissed-today; hide bar when none; persist dismissal for the day across reloads
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5_
   - [x] 20.5 [DOM] Add reminder bar styles in `styles.css`
     - _Requirements: 18.2_
 
-- [ ] 21. User Settings and Profile (Req 19)
+- [x] 21. User Settings and Profile (Req 19)
   - [x] 21.1 [PURE] Implement `isValidFutureDate` and settings field validation
     - `isValidFutureDate(s, today)` (valid calendar date not earlier than today); reuse `validateTarget` for target and diagnostic; constrain study phase to the four allowed values
     - _Requirements: 19.1, 19.2, 19.6, 19.7_
@@ -357,14 +357,14 @@ Task conventions:
   - [x] 21.3 [DOM] Add Settings view markup and nav entry
     - Nav entry + `<section id="view-settings">` with name, test date, target, diagnostic, weekly availability, preferred resources, study-phase select; reference existing theme/export/import controls
     - _Requirements: 19.1, 19.2, 19.5, 20.1_
-  - [ ] 21.4 [DOM] Implement `renderSettings` and handlers in `app.js`
+  - [x] 21.4 [DOM] Implement `renderSettings` and handlers in `app.js`
     - Validate target/diagnostic independently (reject only invalid field, retain prior, accept valid normally); validate test date via `isValidFutureDate`; mirror `settings.testDate`→`state.testDate` (updates countdown) and `settings.targetScore`→`goals.targetScore` with independent partial-update re-renders of Goals and FL chart; persist all fields
     - _Requirements: 19.3, 19.4, 19.6, 19.7, 19.8_
-  - [ ] 21.5 [DOM] Add Settings styles in `styles.css`
+  - [x] 21.5 [DOM] Add Settings styles in `styles.css`
     - _Requirements: 19.1_
 
-- [ ] 22. Navigation integration (Req 20)
-  - [ ] 22.1 [DOM] Introduce the `VIEW_RENDERERS` dispatch map and update the nav handler
+- [x] 22. Navigation integration (Req 20)
+  - [x] 22.1 [DOM] Introduce the `VIEW_RENDERERS` dispatch map and update the nav handler
     - Replace the growing `if` ladder with `VIEW_RENDERERS` mapping each view id to its renderer; call `(VIEW_RENDERERS[view] || (()=>{}))()` before the view becomes visible; ensure exactly one active nav entry and one visible view; preserve existing views' behavior
     - _Requirements: 20.2, 20.3, 20.4, 20.5, 20.6, 20.7_
   - [ ]* 22.2 [DOM] Property/smoke test: navigation invariant
@@ -373,11 +373,11 @@ Task conventions:
   - [ ]* 22.3 [DOM] Smoke tests: all ten new nav entries/views exist and recompute on select
     - _Requirements: 20.1, 20.5, 20.7_
 
-- [ ] 23. Final integration and regression checkpoint
-  - [ ] 23.1 [DOM] Wire initial paint and verify no-`fetch`/`XMLHttpRequest` usage
+- [x] 23. Final integration and regression checkpoint
+  - [x] 23.1 [DOM] Wire initial paint and verify no-`fetch`/`XMLHttpRequest` usage
     - Ensure all new `render*()` run on load via the migrated state; add a dev assertion/code-review check that no network APIs are used (Req 18.5)
     - _Requirements: 18.5, 20.5_
-  - [ ] 23.2 Checkpoint — Ensure all tests pass, ask the user if questions arise.
+  - [x] 23.2 Checkpoint — Ensure all tests pass, ask the user if questions arise.
     - Run `node --test tests/`; confirm all property and example tests pass and the app still loads cleanly with legacy and fresh state
 
 ## Notes
