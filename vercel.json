@@ -1,0 +1,10 @@
+{
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "cleanUrls": true,
+  "excludeFiles": [
+    "tests/**",
+    ".kiro/**",
+    "MCAT-Prep-Tracker-Essentials.md"
+  ]
+}
