@@ -380,6 +380,32 @@ Task conventions:
   - [x] 23.2 Checkpoint — Ensure all tests pass, ask the user if questions arise.
     - Run `node --test tests/`; confirm all property and example tests pass and the app still loads cleanly with legacy and fresh state
 
+- [x] 24. Customizable Sidebar Navigation (Req 21)
+  - [x] 24.1 [PURE] Add `navOrder` and `navHidden` defaults to `state.settings`
+    - Add `navOrder: []` and `navHidden: []` to the settings defaults in `core.js`; an empty `navOrder` means "use built-in order"; `navHidden` lists view ids to hide
+    - _Requirements: 21.4, 21.5, 21.10, 21.11_
+  - [x] 24.2 [DOM] Add "✎ Customize menu" toggle button in the sidebar footer
+    - Add a button that toggles the sidebar between normal mode and edit mode
+    - _Requirements: 21.1_
+  - [x] 24.3 [DOM] Implement drag-to-reorder in edit mode
+    - When in edit mode, make nav entries draggable; on drop, recompute the `navOrder` array, persist to `state.settings`, and re-render the sidebar in the new order
+    - _Requirements: 21.2, 21.4_
+  - [x] 24.4 [DOM] Implement hide/show visibility toggle in edit mode
+    - Show an eye icon on each entry in edit mode; toggling it adds/removes the view id from `navHidden`, persists to `state.settings`, and hides/shows the entry in normal mode
+    - _Requirements: 21.3, 21.5, 21.6_
+  - [x] 24.5 [DOM] Guard against hiding the last visible entry
+    - If the user tries to hide an entry and it would leave zero visible entries, reject the action and leave `navHidden` unchanged
+    - _Requirements: 21.7_
+  - [x] 24.6 [DOM] Redirect when active view is hidden
+    - When the currently displayed view is hidden, automatically navigate to the first visible view in `navOrder`
+    - _Requirements: 21.8_
+  - [x] 24.7 [DOM] Suppress navigation clicks in edit mode
+    - While the sidebar is in edit mode, clicking a nav entry does not switch the active view
+    - _Requirements: 21.9_
+  - [x] 24.8 [DOM] Add sidebar customization styles in `styles.css`
+    - Style the edit-mode state, drag handles, eye icons, and disabled appearance for hidden entries
+    - _Requirements: 21.1, 21.2, 21.3_
+
 ## Notes
 
 - Tasks marked with `*` are optional tests and can be skipped for a faster MVP.
@@ -405,7 +431,8 @@ Task conventions:
     { "id": 8, "tasks": ["5.4", "6.4", "7.4", "8.4", "9.4", "12.4", "13.4", "14.3", "15.4", "16.3", "17.3", "18.4", "19.4", "20.4", "21.4", "10.3"] },
     { "id": 9, "tasks": ["5.5", "6.5", "7.5", "8.5", "9.5", "12.5", "13.5", "14.4", "15.5", "16.4", "17.4", "18.5", "19.5", "20.5", "21.5", "10.4"] },
     { "id": 10, "tasks": ["5.6", "9.6", "14.5", "16.5", "10.5", "22.1"] },
-    { "id": 11, "tasks": ["22.2", "22.3", "23.1"] }
+    { "id": 11, "tasks": ["22.2", "22.3", "23.1", "24.1"] },
+    { "id": 12, "tasks": ["24.2", "24.3", "24.4", "24.5", "24.6", "24.7", "24.8"] }
   ]
 }
 ```

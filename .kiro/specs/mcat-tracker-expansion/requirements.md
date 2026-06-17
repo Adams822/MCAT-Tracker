@@ -344,3 +344,21 @@ All new behavior MUST remain client-side with no backend, MUST persist through t
 5. WHEN the user selects a view that renders a chart or aggregated data, THE App SHALL recompute that view's displayed data from the current State_Object before that view becomes visible.
 6. IF the user selects a view whose required data in the current State_Object is empty or absent, THEN THE App SHALL display the view with an empty-state indication in place of the chart or aggregated data and SHALL leave the State_Object unchanged.
 7. WHEN the user selects a view whose required data in the current State_Object is neither empty nor absent, THE App SHALL display the view's chart or aggregated data according to the normal data display rules rather than an empty-state indication.
+
+### Requirement 21: Customizable Sidebar Navigation
+
+**User Story:** As a user, I want to reorder and hide sidebar navigation entries, so that I can tailor the menu to show only the views I use most in the order I prefer.
+
+#### Acceptance Criteria
+
+1. THE App SHALL display a "✎ Customize menu" toggle button in the sidebar footer that switches the sidebar between normal mode and edit mode.
+2. WHILE the sidebar is in edit mode, THE App SHALL display each navigation entry as a draggable item that the user can reorder by dragging to a new position within the sidebar list.
+3. WHILE the sidebar is in edit mode, THE App SHALL display a visibility toggle icon on each navigation entry that allows the user to hide or show that entry.
+4. WHEN the user reorders navigation entries in edit mode, THE App SHALL store the updated order as a navOrder array in state.settings within the State_Object and persist the change to localStorage.
+5. WHEN the user hides or shows a navigation entry in edit mode, THE App SHALL store the hidden entries as a navHidden array in state.settings within the State_Object and persist the change to localStorage.
+6. WHILE the sidebar is in normal mode, THE App SHALL display navigation entries in the order defined by the navOrder array and SHALL hide entries listed in the navHidden array.
+7. IF the user attempts to hide the last visible navigation entry, THEN THE App SHALL reject the action, retain the entry as visible, and leave the navHidden array unchanged.
+8. WHEN the active view is hidden by the user, THE App SHALL redirect to the first visible view in the navOrder and mark that view's navigation entry as active.
+9. WHILE the sidebar is in edit mode, THE App SHALL suppress navigation clicks so that selecting a navigation entry does not switch the active view.
+10. WHEN the App loads, THE App SHALL read the navOrder and navHidden arrays from the persisted State_Object in localStorage and apply them to the sidebar, preserving the user's customization across page reloads.
+11. WHEN the State_Object lacks a navOrder array or a navHidden array, THE App SHALL use the default navigation order with all entries visible.
