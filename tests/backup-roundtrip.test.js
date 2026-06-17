@@ -196,6 +196,8 @@ const arbSettings = fc.record({
   weeklyAvailability: fc.nat({ max: 168 }),
   preferredResources: fc.string({ maxLength: 200 }),
   studyPhase: fc.constantFrom(...STUDY_PHASES),
+  navOrder: fc.array(fc.string({ maxLength: 16 }), { maxLength: 6 }),
+  navHidden: fc.array(fc.string({ maxLength: 16 }), { maxLength: 6 }),
 });
 
 // Readiness — keep the 10 predefined items in their default order (so

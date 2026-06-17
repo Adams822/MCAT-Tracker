@@ -1458,3 +1458,21 @@ html, body { transition: background .35s ease, color .35s ease; }
 /* The validation messages stack directly under the form; give the group a touch
    of breathing room above the Preferences panel. (#set*Error use .form-error.) */
 #settingsForm + .form-error { margin-top: 12px; }
+
+/* ---------------- Sidebar customization (reorder + hide/show) ---------------- */
+/* Hidden entries are removed from the sidebar outside edit mode. */
+.nav-btn.nav-hidden { display: none; }
+
+/* In edit mode, entries are draggable handles and hidden ones show greyed so they
+   can be re-enabled. */
+.nav.editing .nav-btn { cursor: grab; border: 1px dashed var(--line); }
+.nav.editing .nav-btn:active { cursor: grabbing; }
+.nav.editing .nav-btn.dragging { opacity: .5; border-style: solid; border-color: var(--accent); }
+.nav.editing .nav-btn.nav-item-hidden { opacity: .45; }
+
+/* Per-entry eye toggle, pushed to the right edge of the button row. */
+.nav-hide-toggle {
+  margin-left: auto; padding-left: 8px; font-size: 13px; line-height: 1;
+  cursor: pointer; opacity: .85; flex-shrink: 0;
+}
+.nav-hide-toggle:hover { opacity: 1; transform: scale(1.12); }
