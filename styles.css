@@ -1037,3 +1037,424 @@ html, body { transition: background .35s ease, color .35s ease; }
 .formula-recall-toggle.active,
 .formula-entry.recall .formula-recall-toggle { color: var(--accent); border-color: var(--accent); }
 .formula-entry.recall { border-left-color: var(--accent); }
+
+/* ---- High-Yield Notes (Req 14) ----
+   Reuses the shared design language: .panel for the list/preview columns,
+   .score-field(.grow/.full/.check) for the editor inputs, .formula-tools for
+   the search row, .ghost-btn for the per-entry controls, .empty-state for the
+   no-match + no-selection messages, and the html[data-theme] var()s so it stays
+   theme-safe in both dark and light. Only new, notes-specific layout lives here. */
+
+/* Editor: a wrapping row of fields mirroring .wrong-form / .formula-tools. The
+   .full field (Markdown body) spans the whole row; the submit button aligns to
+   the bottom edge like the other forms (align-items: flex-end). */
+.note-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 18px; }
+.note-form .score-field.full { flex-basis: 100%; }
+.note-form .score-field.full textarea {
+  width: 100%; resize: vertical; min-height: 120px; line-height: 1.5;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px;
+}
+
+/* Two-column layout: notes list beside the rendered-Markdown preview. Collapses
+   to a single column on narrow viewports, mirroring .chart-grid / .dash-row. */
+.note-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.note-layout .panel { margin-bottom: 0; }
+
+/* Note list: a vertical stack of entry cards. */
+.note-list { display: flex; flex-direction: column; gap: 12px; }
+.note-list:empty { display: none; }
+
+/* Entry card: panel-2 surface with a left accent rail, matching .formula-entry. */
+.note-entry {
+  display: flex; gap: 12px; justify-content: space-between; align-items: flex-start;
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-left: 4px solid var(--line); border-radius: 12px; padding: 14px;
+}
+.note-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.note-title { font-size: 15px; font-weight: 600; color: var(--text); word-break: break-word; }
+
+/* Per-tag pills reuse the shared .tag look. */
+.note-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.note-tags:empty { display: none; }
+.note-tags .tag { font-size: 11px; }
+
+/* Linked Error_Log references: small muted line; an "unavailable" link reads as
+   disabled/muted-red without being a hard error (Req 14.9). */
+.note-linked { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.note-linked:empty { display: none; }
+.note-linked .link-btn { font-size: 12px; padding: 0; }
+.note-linked .note-link-missing { color: var(--high); opacity: .8; cursor: default; }
+
+/* Controls column: needs-review toggle stacked above the preview/delete buttons,
+   wrapping gracefully on small cards. */
+.note-controls { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+.note-needs-review {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--muted); cursor: pointer; user-select: none;
+}
+.note-needs-review input { width: auto; padding: 0; margin: 0; accent-color: var(--med); cursor: pointer; }
+
+/* Needs-review state (Req 14.5): an amber accent rail so flagged notes are
+   scannable at a glance, whether the render layer adds a .needs-review class or
+   just checks the toggle (:has fallback). */
+.note-entry.needs-review,
+.note-entry:has(.note-needs-review-toggle:checked) { border-left-color: var(--med); }
+.note-entry.needs-review .note-needs-review,
+.note-entry:has(.note-needs-review-toggle:checked) .note-needs-review { color: var(--med); }
+
+/* Active/selected note (the one shown in the preview pane) gets an accent rail. */
+.note-entry.active { border-left-color: var(--accent); }
+
+/* Rendered-Markdown preview surface: a readable column of formatted output. The
+   .markdown-body rules below style the HTML produced by renderMarkdown. */
+.note-preview { font-size: 14px; line-height: 1.6; color: var(--text); }
+.note-preview:empty { display: none; }
+
+/* ---- Rendered Markdown (.markdown-body, Req 14.2) ----
+   Sensible defaults for the constructs renderMarkdown emits: h1–h3, bold,
+   italic, ordered/unordered lists, links, and inline code. All theme-aware. */
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body > :last-child { margin-bottom: 0; }
+.markdown-body h1 { font-size: 20px; font-weight: 700; margin: 18px 0 10px; }
+.markdown-body h2 { font-size: 17px; font-weight: 700; margin: 16px 0 8px; }
+.markdown-body h3 { font-size: 15px; font-weight: 600; margin: 14px 0 6px; color: var(--muted); }
+.markdown-body p { margin: 0 0 10px; }
+.markdown-body ul, .markdown-body ol { margin: 0 0 10px; padding-left: 22px; }
+.markdown-body li { margin: 3px 0; }
+.markdown-body strong { font-weight: 700; color: var(--text); }
+.markdown-body em { font-style: italic; }
+.markdown-body a { color: var(--accent); text-decoration: none; word-break: break-word; }
+.markdown-body a:hover { text-decoration: underline; }
+.markdown-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px;
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 5px; padding: 1px 6px; color: var(--text);
+}
+
+/* ---- Goals & Milestones (Req 15) ----
+   Reuses the shared design language: .score-form / .score-field.small for the
+   goal inputs, .dash-grid + .stat-card for the progress/completed-FL stats,
+   .panel for each section, .add-form.wide for the milestone form, and the
+   html[data-theme] var()s so it stays theme-safe in both dark and light. Only
+   new, goals-specific layout lives here. */
+
+/* Shared form-level error banner (#goalTargetError, #milestoneError, and the
+   sibling #contentCustomError / #dailyLogError). Reads as an error via the
+   accent-red treatment, mirroring #resourceFormError. Display is left to the
+   UA [hidden] rule so toggling the `hidden` attribute still hides it. */
+.form-error {
+  color: var(--red); border: 1px solid var(--red);
+  background: rgba(239,91,110,.10); border-radius: var(--radius);
+  text-align: left; padding: 12px 14px; margin-bottom: 18px; font-size: 13px;
+}
+
+/* Goal stat figures keep tabular numerals so the percent/count values don't
+   jitter as they update; the completed-full-length count reads as an accent
+   figure consistent with the other prominent stats. */
+#goalWeeklyProgress, #goalDailyProgress, #goalCompletedFL {
+  font-variant-numeric: tabular-nums;
+}
+#goalCompletedFL { color: var(--accent-2); }
+
+/* Weekly-hour + daily-question progress detail panels (#goalWeeklyDetail,
+   #goalDailyDetail). The render layer (task 17.3) drops in a percent line and a
+   progress bar; this stacks them with breathing room and reuses the shared
+   .goal-bar / .goal-fill treatment from the dashboard. Defensive child
+   selectors cover whatever exact markup the renderer emits. */
+#goalWeeklyDetail, #goalDailyDetail {
+  display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--text);
+}
+#goalWeeklyDetail .goal-pct,
+#goalDailyDetail .goal-pct,
+#goalWeeklyDetail > :first-child,
+#goalDailyDetail > :first-child {
+  font-weight: 700; color: var(--accent-2); font-variant-numeric: tabular-nums;
+}
+/* Secondary caption (e.g. "6.5 / 20 hrs") stays muted when present. */
+#goalWeeklyDetail .goal-sub,
+#goalDailyDetail .goal-sub { color: var(--muted); font-size: 12px; }
+/* The bar spans the full panel width here (the dashboard variant is narrow). */
+#goalWeeklyDetail .goal-bar,
+#goalDailyDetail .goal-bar { width: 100%; }
+
+/* Milestone checklist: a list of check-off rows mirroring the .mini-tasks
+   pattern (no bullets, stacked, subtle dividers). Each row is a checkbox + a
+   growing label + an optional delete control. */
+.milestone-list { list-style: none; display: flex; flex-direction: column; }
+.milestone-list li {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 2px; border-bottom: 1px solid var(--line);
+  font-size: 14px; color: var(--text);
+}
+.milestone-list li:last-child { border-bottom: none; }
+
+/* Done-state checkbox: accent fill, no stretching. Works whether the render
+   layer uses a class hook (.milestone-check) or a bare checkbox. */
+.milestone-list input[type="checkbox"] {
+  width: auto; margin: 0; padding: 0; flex-shrink: 0;
+  cursor: pointer; accent-color: var(--accent);
+}
+
+/* Label grows to fill the row; completed milestones read as muted + struck
+   through, whether flagged with a .done/.completed class or just a checked box. */
+.milestone-list .milestone-label,
+.milestone-list li > label,
+.milestone-list li > span { flex: 1; min-width: 0; }
+.milestone-list li.done .milestone-label,
+.milestone-list li.completed .milestone-label,
+.milestone-list li:has(input[type="checkbox"]:checked) .milestone-label,
+.milestone-list li:has(input[type="checkbox"]:checked) > label,
+.milestone-list li:has(input[type="checkbox"]:checked) > span {
+  color: var(--muted); text-decoration: line-through;
+}
+
+/* Delete control sits at the right edge as a muted ghost button that warms to
+   the accent-red on hover (matches the other per-row remove controls). */
+.milestone-list .milestone-del,
+.milestone-list li > button {
+  flex-shrink: 0; background: none; border: none; padding: 4px 6px;
+  color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1;
+  border-radius: 6px;
+}
+.milestone-list .milestone-del:hover,
+.milestone-list li > button:hover { color: var(--red); }
+
+/* ---- Daily Study Log (Req 16) ----
+   Reuses the shared design language: .score-form / .score-field(.small/.grow)
+   for the entry inputs, .panel for the recorded-entries section, .form-error
+   for #dailyLogError, .empty-state for #dailyLogEmpty, and the html[data-theme]
+   var()s so it stays theme-safe in both dark and light. Only new, daily-log-
+   specific layout lives here. */
+
+/* Full-width fields inside the entry form (the reflection fieldset and its
+   prompt rows) break onto their own line, matching .note-form .score-field.full. */
+#dailyLogForm .score-field.full { flex-basis: 100%; }
+
+/* Reflection prompt group (Req 16.4): a labeled fieldset that resets the UA
+   fieldset chrome and stacks its four prompts. The legend reads as a quiet
+   section caption consistent with .score-field labels. */
+.daily-reflection {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px 4px; margin: 4px 0 0;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.daily-reflection > legend {
+  font-size: 11px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .5px; padding: 0 6px; font-weight: 600;
+}
+/* Each prompt label + textarea fills the fieldset width; textareas get a
+   sensible min-height and stay vertically resizable (matches .score-field.grow
+   textarea). */
+.daily-reflection .score-field.full { flex-basis: auto; }
+.daily-reflection textarea {
+  width: 100%; min-height: 56px; resize: vertical; line-height: 1.45;
+  font-family: inherit; font-size: 14px;
+}
+
+/* Recorded entries list (Req 16.5/16.6): a stacked column of entry cards,
+   newest first. The list always renders; when empty, #dailyLogEmpty (a shared
+   .empty-state) shows inside this same area. */
+.daily-log-list { display: flex; flex-direction: column; gap: 14px; }
+.daily-log-list:empty { display: none; }
+
+/* Entry card: a paneled block with an accent rail, mirroring .note-entry /
+   .cars-table row idioms. Defensive selectors cover whatever exact class hook
+   the render layer (task 18.4) emits for an entry. */
+.daily-log-list > .daily-log-entry,
+.daily-log-list > article,
+.daily-log-list > li {
+  list-style: none;
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-left: 3px solid var(--accent); border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+/* Card header: the entry date reads as a prominent figure on the left with any
+   summary metrics trailing to the right. */
+.daily-log-entry .daily-log-head,
+.daily-log-entry header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  flex-wrap: wrap; gap: 8px; margin-bottom: 10px;
+}
+.daily-log-entry .daily-log-date,
+.daily-log-entry header > :first-child {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Summary metrics row (hours / questions / accuracy / subject / energy /
+   confidence): muted chip-like figures that wrap. Tabular numerals keep the
+   numbers steady. */
+.daily-log-entry .daily-log-meta {
+  display: flex; flex-wrap: wrap; gap: 8px 16px;
+  font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.daily-log-entry .daily-log-meta strong,
+.daily-log-entry .daily-log-meta b { color: var(--text); font-weight: 600; }
+
+/* Reflection answers within a card: stacked prompt/answer pairs. The prompt is
+   a small muted caption; the answer reads as body text and preserves the
+   user's line breaks. */
+.daily-log-entry .daily-log-reflection { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.daily-log-entry .daily-log-reflection-item dt,
+.daily-log-entry .daily-log-prompt {
+  font-size: 11px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .5px; font-weight: 600; margin-bottom: 2px;
+}
+.daily-log-entry .daily-log-reflection-item dd,
+.daily-log-entry .daily-log-answer {
+  margin: 0; font-size: 14px; line-height: 1.5; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+}
+
+/* ---- Test-Day Readiness Checklist (Req 17) ----
+   Reuses the shared design language: .stat-card for #readinessCount (Req 17.3),
+   .add-form.wide for #readinessForm, .form-error for #readinessError (Req 17.5),
+   and .empty-state for #readinessCustomEmpty. Only the checklist-row layout is
+   new here, mirroring the .milestone-list / .mini-tasks check-off pattern (no
+   bullets, stacked rows, subtle dividers). Theme-safe via html[data-theme] var()s.
+   Defensive selectors cover whatever exact class hook the render layer emits. */
+.readiness-list { list-style: none; display: flex; flex-direction: column; }
+.readiness-list li {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 2px; border-bottom: 1px solid var(--line);
+  font-size: 14px; color: var(--text);
+}
+.readiness-list li:last-child { border-bottom: none; }
+
+/* Check-off control: accent fill, fixed size, no stretching (Req 17.2). */
+.readiness-list input[type="checkbox"] {
+  width: auto; margin: 0; padding: 0; flex-shrink: 0;
+  cursor: pointer; accent-color: var(--accent);
+}
+
+/* Label grows to fill the row; completed items read as muted + struck through,
+   whether flagged with a .done/.completed class or just a checked box. */
+.readiness-list .readiness-label,
+.readiness-list li > label,
+.readiness-list li > span { flex: 1; min-width: 0; }
+.readiness-list li.done .readiness-label,
+.readiness-list li.completed .readiness-label,
+.readiness-list li:has(input[type="checkbox"]:checked) .readiness-label,
+.readiness-list li:has(input[type="checkbox"]:checked) > label,
+.readiness-list li:has(input[type="checkbox"]:checked) > span {
+  color: var(--muted); text-decoration: line-through;
+}
+
+/* Per-row delete control for custom items: a muted ghost button that warms to
+   the accent-red on hover (matches the other per-row remove controls). */
+.readiness-list .readiness-del,
+.readiness-list li > button {
+  flex-shrink: 0; background: none; border: none; padding: 4px 6px;
+  color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1;
+  border-radius: 6px;
+}
+.readiness-list .readiness-del:hover,
+.readiness-list li > button:hover { color: var(--red); }
+
+/* ---------------- In-App Reminders (Req 18) ----------------
+   A single persistent banner (#reminderBar) lives inside .main, above the
+   views, so it shows on every primary view (Req 18.2). The render layer
+   (task 20.4) fills it with one row per active reminder, each carrying a
+   message and a dismiss control (Req 18.4); when no reminders are active the
+   render layer sets the [hidden] attribute and the bar collapses (Req 18.3).
+   Markup is not final, so every rule below uses defensive child selectors so
+   styling holds regardless of the exact class hooks the renderer emits.
+   Theme-safe through the shared html[data-theme] custom properties; the banner
+   echoes the .quote-bar accent-left idiom and reuses the .status-pill / .del-btn
+   looks for the items and dismiss buttons. */
+
+/* Bar container: a stacked column of reminder rows with the accent-left bar of
+   .quote-bar. Honors the [hidden] attribute the render layer toggles. */
+#reminderBar {
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px; padding: 12px 16px; margin-bottom: 18px;
+  box-shadow: var(--shadow);
+  animation: slideUp .35s ease both;
+}
+#reminderBar[hidden] { display: none; }
+
+/* Reminder row: the message grows and the dismiss control sits on the right,
+   separated by subtle dividers when there are multiple. Defensive
+   #reminderBar > * fallback covers whatever element the renderer drops in. */
+.reminder-item,
+#reminderBar > * {
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 0; border-bottom: 1px solid var(--line);
+  font-size: 14px; color: var(--text); line-height: 1.4;
+}
+.reminder-item:last-child,
+#reminderBar > *:last-child { border-bottom: none; }
+
+/* A small leading type pill (e.g. "Test", "Review", "Full-Length", "Retest"),
+   reusing the .status-pill capsule look. Color-cued per type via a data-type
+   attribute, theme-safe through the shared vars; degrades gracefully when the
+   renderer omits the type marker. */
+.reminder-item .reminder-type,
+.reminder-type {
+  flex-shrink: 0; font-size: 11px; padding: 3px 9px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .5px; font-weight: 600;
+}
+.reminder-item[data-type="test"] .reminder-type,
+.reminder-type[data-type="test"] { color: var(--red); border-color: var(--red); }
+.reminder-item[data-type="review"] .reminder-type,
+.reminder-type[data-type="review"] { color: var(--accent); border-color: var(--accent); }
+.reminder-item[data-type="fulllength"] .reminder-type,
+.reminder-item[data-type="full-length"] .reminder-type,
+.reminder-type[data-type="fulllength"],
+.reminder-type[data-type="full-length"] { color: var(--yellow); border-color: var(--yellow); }
+.reminder-item[data-type="retest"] .reminder-type,
+.reminder-type[data-type="retest"] { color: var(--green); border-color: var(--green); }
+
+/* Left-border type cue on the whole row, mirroring .review-item /
+   .content-topic-row. Stays subtle so the banner's own accent-left dominates. */
+.reminder-item[data-type="test"] { border-left: 3px solid transparent; border-left-color: var(--red); padding-left: 10px; margin-left: -10px; }
+.reminder-item[data-type="review"] { border-left: 3px solid transparent; border-left-color: var(--accent); padding-left: 10px; margin-left: -10px; }
+
+/* Message text grows to fill the row; an optional date detail reads muted. The
+   message is the row's first child when the renderer emits a plain element. */
+.reminder-item .reminder-message,
+#reminderBar > * > .reminder-message,
+#reminderBar > * > :first-child { flex: 1; min-width: 0; }
+.reminder-item .reminder-date,
+.reminder-date {
+  flex-shrink: 0; color: var(--muted); font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dismiss control (Req 18.4): a muted ghost button that warms to accent-red on
+   hover, reusing the .del-btn idiom. Defensive selectors also catch a generic
+   trailing <button> when the renderer doesn't apply the class. */
+.reminder-item .reminder-dismiss,
+.reminder-dismiss,
+#reminderBar > * > button:last-child {
+  flex-shrink: 0; background: none; border: none; padding: 4px 8px;
+  color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1;
+  border-radius: 6px; transition: color .15s, border-color .15s;
+}
+.reminder-item .reminder-dismiss:hover,
+.reminder-dismiss:hover,
+#reminderBar > * > button:last-child:hover { color: var(--red); }
+
+/* ---------------- User Settings & Profile (Req 19) ----------------
+   The Settings form (#settingsForm) reuses the shared .score-form / .score-field
+   (.grow/.small) row layout, the .form-error look for the per-field validation
+   messages (#setTestDateError / #setTargetError / #setDiagnosticError), and the
+   .panel / .panel-head pattern for the Preferences card — all already styled and
+   theme-safe via the html[data-theme] custom properties. The only gap the shared
+   rules don't cover is the full-width "Preferred resources" field, so just that
+   bit of polish lives here (mirroring .note-form / #dailyLogForm .score-field.full). */
+
+/* Preferred-resources field breaks onto its own row and its textarea fills the
+   width with a sensible min-height while staying vertically resizable. */
+#settingsForm .score-field.full { flex-basis: 100%; }
+#settingsForm .score-field.full textarea {
+  width: 100%; resize: vertical; min-height: 56px; line-height: 1.45;
+}
+
+/* The validation messages stack directly under the form; give the group a touch
+   of breathing room above the Preferences panel. (#set*Error use .form-error.) */
+#settingsForm + .form-error { margin-top: 12px; }

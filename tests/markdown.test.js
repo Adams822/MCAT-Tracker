@@ -291,3 +291,124 @@ test("Property 36: explicit boundary and edge cases", () => {
     assert.strictEqual(MCAT.validateTarget(s).ok, false);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Task 16.5: Example/unit tests for each markdown construct + targeted XSS
+// ---------------------------------------------------------------------------
+// These complement Property 35 with concrete expected-output assertions: each
+// supported construct (h1-h3, bold, italic, ordered/unordered list, link,
+// inline code) renders to a pinned HTML string, and targeted XSS payloads are
+// asserted neutralized/escaped.
+// Validates: Requirements 14.2
+
+test("Construct: h1 heading renders to <h1>", () => {
+  assert.strictEqual(MCAT.renderMarkdown("# Heading one"), "<h1>Heading one</h1>");
+});
+
+test("Construct: h2 heading renders to <h2>", () => {
+  assert.strictEqual(MCAT.renderMarkdown("## Heading two"), "<h2>Heading two</h2>");
+});
+
+test("Construct: h3 heading renders to <h3>", () => {
+  assert.strictEqual(MCAT.renderMarkdown("### Heading three"), "<h3>Heading three</h3>");
+});
+
+test("Construct: bold renders to <strong>", () => {
+  assert.strictEqual(
+    MCAT.renderMarkdown("**bold text**"),
+    "<p><strong>bold text</strong></p>"
+  );
+});
+
+test("Construct: italic renders to <em>", () => {
+  assert.strictEqual(
+    MCAT.renderMarkdown("*italic text*"),
+    "<p><em>italic text</em></p>"
+  );
+});
+
+test("Construct: unordered list renders to <ul>/<li>", () => {
+  assert.strictEqual(
+    MCAT.renderMarkdown("- first\n- second"),
+    "<ul>\n<li>first</li>\n<li>second</li>\n</ul>"
+  );
+});
+
+test("Construct: ordered list renders to <ol>/<li>", () => {
+  assert.strictEqual(
+    MCAT.renderMarkdown("1. first\n2. second"),
+    "<ol>\n<li>first</li>\n<li>second</li>\n</ol>"
+  );
+});
+
+test("Construct: link with http href renders to <a>", () => {
+  assert.strictEqual(
+    MCAT.renderMarkdown("[label](https://example.com/path)"),
+    '<p><a href="https://example.com/path">label</a></p>'
+  );
+});
+
+test("Construct: relative link is allowed and renders to <a>", () => {
+  assert.strictEqual(
+    MCAT.renderMarkdown("[rel](/relative/path)"),
+    '<p><a href="/relative/path">rel</a></p>'
+  );
+});
+
+test("Construct: mailto link is allowed and renders to <a>", () => {
+  assert.strictEqual(
+    MCAT.renderMarkdown("[email](mailto:a@b.com)"),
+    '<p><a href="mailto:a@b.com">email</a></p>'
+  );
+});
+
+test("Construct: inline code renders to <code>", () => {
+  assert.strictEqual(
+    MCAT.renderMarkdown("`inline code`"),
+    "<p><code>inline code</code></p>"
+  );
+});
+
+// --- Targeted XSS examples (concrete, pinned) ------------------------------
+
+test("XSS: script tag is escaped to inert text", () => {
+  const out = MCAT.renderMarkdown("<script>alert(1)</script>");
+  assert.strictEqual(out, "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>");
+  assert.ok(!out.toLowerCase().includes("<script"));
+});
+
+test("XSS: img onerror attribute is escaped to inert text", () => {
+  const out = MCAT.renderMarkdown("<img src=x onerror=alert(1)>");
+  assert.strictEqual(out, "<p>&lt;img src=x onerror=alert(1)&gt;</p>");
+  assert.ok(!out.toLowerCase().includes("<img"));
+});
+
+test("XSS: javascript: link target is neutralized to plain label", () => {
+  const out = MCAT.renderMarkdown("[click](javascript:alert1)");
+  assert.strictEqual(out, "<p>click</p>");
+  assert.ok(!out.toLowerCase().includes('href="javascript:'));
+});
+
+test("XSS: mixed-case JaVaScRiPt: link target is neutralized", () => {
+  const out = MCAT.renderMarkdown("[click](JaVaScRiPt:alert1)");
+  assert.strictEqual(out, "<p>click</p>");
+  assert.ok(!out.toLowerCase().includes('href="javascript:'));
+});
+
+test("XSS: data: URL link target is neutralized to plain label", () => {
+  const out = MCAT.renderMarkdown("[click](data:text/html,hi)");
+  assert.strictEqual(out, "<p>click</p>");
+  assert.ok(!out.toLowerCase().includes('href="data:'));
+});
+
+test("XSS: vbscript: link target is neutralized to plain label", () => {
+  const out = MCAT.renderMarkdown("[click](vbscript:msgbox1)");
+  assert.strictEqual(out, "<p>click</p>");
+  assert.ok(!out.toLowerCase().includes('href="vbscript:'));
+});
+
+test("XSS: attribute-breakout quotes are escaped", () => {
+  const out = MCAT.renderMarkdown('"><script>alert(1)</script>');
+  assert.ok(!out.toLowerCase().includes("<script"));
+  assert.ok(out.includes("&quot;") && out.includes("&gt;"));
+});

@@ -75,7 +75,7 @@ function sampleSets() {
 // documented fields.
 // ===========================================================================
 
-test("Req 3.8: practice sets are listed newest → oldest by date", () => {
+test("Req 3.8: practice sets are listed newest -> oldest by date", () => {
   const ordered = orderPracticeSets(sampleSets());
   assert.deepStrictEqual(
     ordered.map((s) => s.date),
@@ -161,7 +161,7 @@ test("Req 3.7: deleting a non-existent id leaves the list unchanged", () => {
   assert.deepStrictEqual(result.map((s) => s.id), [100, 200, 300]);
 });
 
-test("Req 3.7: delete is idempotent — deleting the same id twice removes it once", () => {
+test("Req 3.7: delete is idempotent -- deleting the same id twice removes it once", () => {
   const once = deletePracticeSet(sampleSets(), 300);
   const twice = deletePracticeSet(once, 300);
   assert.deepStrictEqual(twice.map((s) => s.id), [100, 200]);
@@ -177,7 +177,7 @@ test("Req 3.7: deleting against an undefined/empty list never throws and yields 
   assert.deepStrictEqual(deletePracticeSet([], 1), []);
 });
 
-test("Req 3.7/3.8: after deleting a set, the remaining sets still order newest → oldest", () => {
+test("Req 3.7/3.8: after deleting a set, the remaining sets still order newest -> oldest", () => {
   const remaining = deletePracticeSet(sampleSets(), 300); // remove the 2024-02-01 entry
   const ordered = orderPracticeSets(remaining);
   assert.deepStrictEqual(ordered.map((s) => s.date), ["2024-03-15", "2024-01-10"]);

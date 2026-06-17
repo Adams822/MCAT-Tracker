@@ -18,7 +18,7 @@ const assert = require("node:assert");
 const fc = require("fast-check");
 const MCAT = require("../core.js");
 
-const { searchFormulas, filterByTags, SEED_FORMULAS } = MCAT;
+const { searchFormulas, searchNotes, filterByTags, SEED_FORMULAS } = MCAT;
 
 /* ------------------------------------------------------------------ */
 /* Shared helpers / arbitraries                                        */
@@ -130,6 +130,74 @@ test("Property 32: clearing the term returns all (plain-object) entries", () => 
     fc.property(arbFormulaList, fc.constantFrom("", null, undefined), (formulas, emptyTerm) => {
       const result = searchFormulas(formulas, emptyTerm);
       const expected = formulas.filter(isPlainObject);
+      assert.deepStrictEqual(result, expected);
+    }),
+    { numRuns: 100 }
+  );
+});
+
+/* ------------------------------------------------------------------ */
+/* Property 32 (notes): searchNotes matches title | body | any tag    */
+/* Validates: Requirements 14.3                                        */
+/* ------------------------------------------------------------------ */
+
+// A Note_Entry mirrors the FormulaEntry shape but searches title|body|tags.
+// Reuse arbField/arbTags so generated titles/bodies collide with terms.
+const arbNote = fc.record({
+  id: stringOf(LETTERS, { minLength: 1, maxLength: 6 }),
+  title: arbField,
+  body: arbField,
+  tags: arbTags,
+  needsReview: fc.boolean(),
+});
+
+const arbNoteEntry = fc.oneof(
+  { weight: 7, arbitrary: arbNote },
+  { weight: 1, arbitrary: arbJunkEntry }
+);
+
+const arbNoteList = fc.array(arbNoteEntry, { maxLength: 12 });
+
+test("Property 32: searchNotes returns exactly the entries whose title/body/tag contains the term (case-insensitive)", () => {
+  fc.assert(
+    fc.property(arbNoteList, arbTerm, (notes, term) => {
+      const result = searchNotes(notes, term);
+
+      // Independent oracle mirroring searchNotes: skip non-objects, then
+      // case-insensitive substring over title | body | any tag.
+      const expected = notes.filter((n) => {
+        if (!isPlainObject(n)) return false;
+        if (containsCIOracle(n.title, term)) return true;
+        if (containsCIOracle(n.body, term)) return true;
+        const tags = Array.isArray(n.tags) ? n.tags : [];
+        return tags.some((tag) => containsCIOracle(tag, term));
+      });
+
+      // Exact match: same entries, same order, same references.
+      assert.deepStrictEqual(result, expected);
+
+      // Every returned entry genuinely matches the term somewhere.
+      const lower = String(term == null ? "" : term).toLowerCase();
+      if (lower !== "") {
+        for (const n of result) {
+          const tags = Array.isArray(n.tags) ? n.tags : [];
+          const hit =
+            String(n.title == null ? "" : n.title).toLowerCase().includes(lower) ||
+            String(n.body == null ? "" : n.body).toLowerCase().includes(lower) ||
+            tags.some((t) => String(t == null ? "" : t).toLowerCase().includes(lower));
+          assert.ok(hit, `returned note does not match term ${JSON.stringify(term)}`);
+        }
+      }
+    }),
+    { numRuns: 200 }
+  );
+});
+
+test("Property 32 (notes): clearing the term returns all (plain-object) entries", () => {
+  fc.assert(
+    fc.property(arbNoteList, fc.constantFrom("", null, undefined), (notes, emptyTerm) => {
+      const result = searchNotes(notes, emptyTerm);
+      const expected = notes.filter(isPlainObject);
       assert.deepStrictEqual(result, expected);
     }),
     { numRuns: 100 }
