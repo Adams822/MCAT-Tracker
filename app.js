@@ -206,6 +206,9 @@ navBtns.forEach(btn => {
     if (btn.dataset.view === "practice") renderPractice();
     if (btn.dataset.view === "analytics") renderAnalytics();
     if (btn.dataset.view === "content") renderContent();
+    if (btn.dataset.view === "cars") renderCars();
+    if (btn.dataset.view === "review") renderReview();
+    if (btn.dataset.view === "resources") renderResources();
   });
 });
 
@@ -1182,6 +1185,261 @@ if (practiceForm) {
   });
 }
 
+/* ---------------- CARS Practice Tracker (Req 10) ----------------
+   DOM/handler layer for the CARS view. All validation and aggregation lives
+   in the pure layer (core.js / MCAT.*); this layer only reads inputs, mutates
+   state, saves, and writes DOM.
+
+   renderCars() repaints the entry list (newest→oldest), the average-minutes-
+   per-passage read-out, and the accuracy-by-question-type read-out. While no
+   entries exist it shows the list empty-state and suppresses BOTH aggregates
+   (Req 10.7). On submit, validateCarsEntry rejects invalid input and leaves
+   state unchanged, surfacing a field-specific message (Req 10.1, 10.5, 10.6). */
+const carsForm = document.getElementById("carsForm");
+const carsBody = document.getElementById("carsBody");
+
+// Surface validation errors inside the CARS form (inline), falling back to
+// alert if the form element is somehow unavailable.
+function showCarsErrors(errors) {
+  const msgs = Object.keys(errors).map(k => errors[k]);
+  if (!carsForm) { alert(msgs.join("\n")); return; }
+  let box = document.getElementById("carsFormErrors");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "carsFormErrors";
+    box.className = "form-errors";
+    box.setAttribute("role", "alert");
+    carsForm.appendChild(box);
+  }
+  box.innerHTML = msgs.map(m => `<div>${escapeHtml(m)}</div>`).join("");
+  box.style.display = "";
+}
+function clearCarsErrors() {
+  const box = document.getElementById("carsFormErrors");
+  if (box) { box.innerHTML = ""; box.style.display = "none"; }
+}
+
+function renderCars() {
+  const entries = Array.isArray(state.carsPassages) ? state.carsPassages : [];
+  const hasEntries = entries.length > 0;
+
+  // ---- list: newest → oldest (by date desc, stable on id) ----
+  if (carsBody) {
+    const ordered = [...entries].sort((a, b) =>
+      (b.date || "").localeCompare(a.date || "") || String(b.id).localeCompare(String(a.id)));
+    carsBody.innerHTML = "";
+    ordered.forEach(en => {
+      const tr = document.createElement("tr");
+      const types = Array.isArray(en.questionTypes) ? en.questionTypes : [];
+      tr.innerHTML = `
+        <td>${en.date || "—"}</td>
+        <td>${en.passages}</td>
+        <td>${en.accuracy}%</td>
+        <td>${en.timePerPassage}</td>
+        <td>${escapeHtml(en.difficulty || "—")}</td>
+        <td>${types.length ? escapeHtml(types.join(", ")) : "—"}</td>
+        <td><button class="del-btn" title="delete">✕</button></td>`;
+      tr.querySelector(".del-btn").addEventListener("click", () => deleteCarsEntry(en.id));
+      carsBody.appendChild(tr);
+    });
+  }
+  // List empty-state toggles independently of the aggregates below (Req 10.7).
+  const carsEmpty = document.getElementById("carsEmpty");
+  if (carsEmpty) carsEmpty.style.display = hasEntries ? "none" : "";
+
+  // ---- average minutes per passage (Req 10.3 / hidden when none: 10.7) ----
+  const avgEl = document.getElementById("carsAvgMinutes");
+  if (avgEl) {
+    const avg = MCAT.avgMinutesPerPassage(entries);
+    avgEl.innerHTML = (avg != null)
+      ? `<span class="cars-avg-value">${avg}</span> <span class="muted small">min / passage</span>`
+      : `<div class="empty-state">Add a passage to see your average minutes per passage.</div>`;
+  }
+
+  // ---- accuracy by question type (Req 10.4 / hidden when none: 10.7) ----
+  const byTypeEl = document.getElementById("carsAccByType");
+  if (byTypeEl) {
+    const byType = MCAT.accuracyByQuestionType(entries);
+    const types = MCAT.CARS_QUESTION_TYPES.filter(t => Object.prototype.hasOwnProperty.call(byType, t));
+    byTypeEl.innerHTML = types.length
+      ? `<ul class="cars-acc-list">${types.map(t =>
+          `<li><span class="cars-acc-type">${escapeHtml(t)}</span><span class="cars-acc-pct">${byType[t]}%</span></li>`).join("")}</ul>`
+      : `<div class="empty-state">Tag passages with question types to see accuracy by type.</div>`;
+  }
+}
+
+function deleteCarsEntry(id) {
+  state.carsPassages = (state.carsPassages || []).filter(en => en.id !== id);
+  save();
+  renderCars();
+}
+
+if (carsForm) {
+  carsForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const questionTypes = Array.from(document.querySelectorAll(".car-qtype"))
+      .filter(cb => cb.checked).map(cb => cb.value);
+    const input = {
+      date: document.getElementById("carDate").value,
+      passages: document.getElementById("carPassages").value,
+      accuracy: document.getElementById("carAccuracy").value,
+      timePerPassage: document.getElementById("carTime").value,
+      difficulty: document.getElementById("carDifficulty").value,
+      questionTypes,
+      notes: document.getElementById("carNotes").value
+    };
+    const result = MCAT.validateCarsEntry(input);
+    if (!result.ok) { showCarsErrors(result.errors); return; } // state unchanged
+    if (!Array.isArray(state.carsPassages)) state.carsPassages = [];
+    state.carsPassages.push(result.value);
+    save();
+    carsForm.reset();
+    clearCarsErrors();
+    renderCars();
+  });
+}
+
+/* ---------------- Review / Spaced-Repetition Tracker (Req 11) ----------------
+   DOM/handler layer for the Review view. All spaced-repetition math lives in
+   the pure layer (core.js / MCAT.*); this layer only reads inputs, mutates
+   state, saves, and writes DOM.
+
+   renderReview() repaints the item list, the due-today count, the retention
+   rate, and the topics-by-retention list. Each item's display state and the
+   due count are DERIVED per the current date (todayStr()) via MCAT.reviewState
+   / MCAT.dueCount so they always reflect "due" correctly (Req 11.2, 11.3, 11.7).
+   Created items start as "new" (intervalIndex -1, no nextDue, zero marks). The
+   reviewed/missed buttons call the pure MCAT.markReviewed / MCAT.markMissed
+   helpers and persist (Req 11.4, 11.5, 11.6). */
+const reviewForm = document.getElementById("reviewForm");
+
+function showReviewErrors(msgs) {
+  if (!reviewForm) { alert(msgs.join("\n")); return; }
+  let box = document.getElementById("reviewFormErrors");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "reviewFormErrors";
+    box.className = "form-errors";
+    box.setAttribute("role", "alert");
+    reviewForm.appendChild(box);
+  }
+  box.innerHTML = msgs.map(m => `<div>${escapeHtml(m)}</div>`).join("");
+  box.style.display = "";
+}
+function clearReviewErrors() {
+  const box = document.getElementById("reviewFormErrors");
+  if (box) { box.innerHTML = ""; box.style.display = "none"; }
+}
+
+function renderReview() {
+  const items = Array.isArray(state.reviewItems) ? state.reviewItems : [];
+  const today = todayStr();
+
+  // ---- due-today count (Req 11.7): nextDue on or before today ----
+  const dueEl = document.getElementById("reviewDue");
+  if (dueEl) {
+    const due = MCAT.dueCount(items, today);
+    dueEl.innerHTML =
+      `<span class="review-due-value">${due}</span> <span class="muted small">item${due === 1 ? "" : "s"} due</span>`;
+  }
+
+  // ---- retention rate (Req 11.8 "N/A" / 11.9 percentage) ----
+  const retEl = document.getElementById("reviewRetention");
+  if (retEl) {
+    const rate = MCAT.retentionRate(items);
+    retEl.innerHTML = (rate === "N/A")
+      ? `<span class="review-retention-value">N/A</span>`
+      : `<span class="review-retention-value">${rate}%</span>`;
+  }
+
+  // ---- topics by retention, lowest first (Req 11.10) ----
+  const topicsEl = document.getElementById("reviewTopics");
+  if (topicsEl) {
+    const rows = MCAT.topicsByRetention(items);
+    topicsEl.innerHTML = rows.length
+      ? `<ul class="review-topic-list">${rows.map(r =>
+          `<li><span class="review-topic-name">${escapeHtml(r.topic || "—")}</span>` +
+          `<span class="review-topic-pct">${r.rate}%</span></li>`).join("")}</ul>`
+      : `<div class="empty-state">Mark items reviewed or missed to rank topics by retention.</div>`;
+  }
+
+  // ---- item list with derived state + reviewed/missed/delete actions ----
+  const listEl = document.getElementById("reviewList");
+  if (listEl) {
+    listEl.innerHTML = "";
+    items.forEach(it => {
+      const st = MCAT.reviewState(it, today);
+      const card = document.createElement("div");
+      card.className = "review-item";
+      card.innerHTML = `
+        <div class="review-item-main">
+          <span class="review-state-badge ${st}">${st}</span>
+          <span class="review-item-topic">${escapeHtml(it.topic || "—")}</span>
+          <span class="review-item-due muted small">${it.nextDue ? "due " + it.nextDue : "not scheduled"}</span>
+        </div>
+        <div class="review-item-content">${escapeHtml(it.content || "")}</div>
+        <div class="review-item-actions">
+          <button type="button" class="btn small review-reviewed-btn">Reviewed</button>
+          <button type="button" class="btn small review-missed-btn">Missed</button>
+          <button class="del-btn" title="delete">✕</button>
+        </div>`;
+      card.querySelector(".review-reviewed-btn").addEventListener("click", () => markReviewItemReviewed(it.id));
+      card.querySelector(".review-missed-btn").addEventListener("click", () => markReviewItemMissed(it.id));
+      card.querySelector(".del-btn").addEventListener("click", () => deleteReviewItem(it.id));
+      listEl.appendChild(card);
+    });
+  }
+  const emptyEl = document.getElementById("reviewEmpty");
+  if (emptyEl) emptyEl.style.display = items.length ? "none" : "";
+}
+
+function markReviewItemReviewed(id) {
+  const items = Array.isArray(state.reviewItems) ? state.reviewItems : [];
+  state.reviewItems = items.map(it =>
+    it.id === id ? MCAT.markReviewed(it, todayStr()) : it);
+  save();
+  renderReview();
+}
+
+function markReviewItemMissed(id) {
+  const items = Array.isArray(state.reviewItems) ? state.reviewItems : [];
+  state.reviewItems = items.map(it =>
+    it.id === id ? MCAT.markMissed(it, todayStr()) : it);
+  save();
+  renderReview();
+}
+
+function deleteReviewItem(id) {
+  state.reviewItems = (state.reviewItems || []).filter(it => it.id !== id);
+  save();
+  renderReview();
+}
+
+if (reviewForm) {
+  reviewForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const topic = document.getElementById("rvTopic").value.trim();
+    const content = document.getElementById("rvContent").value.trim();
+    // Req 11.1: topic 1..100 chars, content 1..2000 chars.
+    const errors = [];
+    if (topic.length < 1 || topic.length > 100) errors.push("Topic must be 1 to 100 characters.");
+    if (content.length < 1 || content.length > 2000) errors.push("Content must be 1 to 2000 characters.");
+    if (errors.length) { showReviewErrors(errors); return; } // state unchanged
+
+    if (!Array.isArray(state.reviewItems)) state.reviewItems = [];
+    // Created item starts as "new": never reviewed/missed, interval not advanced (Req 11.2).
+    state.reviewItems.push({
+      id: uid(), topic, content,
+      state: "new", intervalIndex: -1, nextDue: "",
+      reviewedMarks: 0, missedMarks: 0
+    });
+    save();
+    reviewForm.reset();
+    clearReviewErrors();
+    renderReview();
+  });
+}
+
 /* ---------------- Analytics (Req 8) ----------------
    Derived-only view: reads state.practiceSets/sessions/wrong/scores, calls the
    pure aggregations in core.js (MCAT.*), and paints charts/lists via the shared
@@ -1452,6 +1710,135 @@ function renderResources() {
           <span><span class="res-name">${escapeHtml(it.name)}</span><br><span class="res-type">${it.type}</span></span>
         </a>`).join("") + `</div>`;
     wrap.appendChild(div);
+  });
+  renderResourceTracker();
+}
+
+/* ---------------- Resource tracker (Req 12) ----------------
+   Editable companion to the static resource links above. The links are
+   rendered untouched by renderResources(); this section adds the tracked-
+   resource table, the add form, and the order-by-priority control.
+
+   Pure helpers (core.js): validateResourceCounts (Req 12.4/12.5),
+   completionPct (Req 12.2/12.3), sortByPriority (Req 12.7/12.8). */
+const PRIORITY_LABELS = { high: "High", med: "Medium", low: "Low" };
+// When true, the tracked-resource table is shown highest→lowest priority.
+let resourceOrderByPriority = false;
+
+function showResourceError(msg) {
+  const el = document.getElementById("resourceFormError");
+  if (!el) { alert(msg); return; }
+  el.textContent = msg;
+  el.hidden = false;
+}
+function clearResourceError() {
+  const el = document.getElementById("resourceFormError");
+  if (el) { el.textContent = ""; el.hidden = true; }
+}
+
+function renderResourceTracker() {
+  const body = document.getElementById("resourceTrackerBody");
+  if (!body) return;
+  const entries = Array.isArray(state.resourceTracker) ? state.resourceTracker : [];
+
+  // Priority ordering (Req 12.7). On a technical failure surface an error and
+  // keep the current view unchanged — no fallback reordering (Req 12.8).
+  let display = entries;
+  if (resourceOrderByPriority) {
+    try {
+      display = MCAT.sortByPriority(entries);
+    } catch (e) {
+      showResourceError("Could not order by priority. The current view is unchanged.");
+      resourceOrderByPriority = false;
+      display = entries;
+    }
+  }
+
+  body.innerHTML = "";
+  display.forEach(r => {
+    const tr = document.createElement("tr");
+    const completed = Number(r.questionsCompleted) || 0;
+    const total = Number(r.totalQuestions) || 0;
+    const accuracy = (r.accuracy === null || r.accuracy === undefined || r.accuracy === "")
+      ? "—" : `${r.accuracy}%`;
+    tr.innerHTML = `
+      <td>${escapeHtml(r.name || "—")}</td>
+      <td>${escapeHtml(r.type || "—")}</td>
+      <td>${escapeHtml(MCAT.completionPct(completed, total))}</td>
+      <td>${completed} / ${total}</td>
+      <td>${accuracy}</td>
+      <td>${escapeHtml(PRIORITY_LABELS[r.priority] || r.priority || "—")}</td>
+      <td>${escapeHtml(r.notes || "")}</td>
+      <td><button class="del-btn" title="delete">✕</button></td>`;
+    tr.querySelector(".del-btn").addEventListener("click", () => deleteResourceEntry(r.id));
+    body.appendChild(tr);
+  });
+
+  const empty = document.getElementById("resourceTrackerEmpty");
+  if (empty) empty.style.display = display.length ? "none" : "";
+}
+
+function deleteResourceEntry(id) {
+  state.resourceTracker = (state.resourceTracker || []).filter(r => r.id !== id);
+  save();
+  renderResourceTracker();
+}
+
+const resourceForm = document.getElementById("resourceForm");
+if (resourceForm) {
+  resourceForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const name = document.getElementById("resName").value.trim();
+    const type = document.getElementById("resType").value.trim();
+    const totalRaw = document.getElementById("resTotal").value;
+    const completedRaw = document.getElementById("resCompleted").value;
+    const accuracyRaw = document.getElementById("resAccuracy").value;
+    const priority = document.getElementById("resPriority").value;
+    const notes = document.getElementById("resNotes").value.trim();
+
+    if (!name) { showResourceError("Name is required."); return; }
+
+    // Blank count fields default to 0; validate integers >=0 and completed<=total.
+    const total = totalRaw === "" ? 0 : totalRaw;
+    const completed = completedRaw === "" ? 0 : completedRaw;
+    const check = MCAT.validateResourceCounts(completed, total);
+    if (!check.ok) { showResourceError(check.reason); return; } // reject + retain prior
+
+    let accuracy = null;
+    if (accuracyRaw !== "") {
+      const a = Number(accuracyRaw);
+      if (!isFinite(a) || a < 0 || a > 100) {
+        showResourceError("Accuracy must be a number from 0 to 100.");
+        return;
+      }
+      accuracy = a;
+    }
+
+    const entry = {
+      id: uid(),
+      name: name.slice(0, 200),
+      type: type.slice(0, 100),
+      totalQuestions: Number(total),
+      questionsCompleted: Number(completed),
+      accuracy,
+      priority: MCAT.PRIORITY_LEVELS.includes(priority) ? priority : "med",
+      notes: notes.slice(0, 2000)
+    };
+    if (!Array.isArray(state.resourceTracker)) state.resourceTracker = [];
+    state.resourceTracker.push(entry);
+    save();
+    resourceForm.reset();
+    clearResourceError();
+    renderResourceTracker();
+  });
+}
+
+const resourceOrderBtn = document.getElementById("resourceOrderPriority");
+if (resourceOrderBtn) {
+  resourceOrderBtn.addEventListener("click", () => {
+    resourceOrderByPriority = true;
+    clearResourceError();
+    renderResourceTracker();
   });
 }
 
@@ -1902,6 +2289,40 @@ function renderDashboard() {
     li.innerHTML = `<span class="tag">${w.section}</span><span style="flex:1;">${escapeHtml(w.topic || w.source)}</span><span class="miss-count ${w.count>1?"repeat":""}">×${w.count}</span>`;
     dashWrong.appendChild(li);
   });
+
+  // --- Summary metrics (Req 9.1–9.4). Each metric reads its own underlying
+  //     data and renders an independent empty state ("--" / list message), so a
+  //     metric without recorded data never blanks one that has data (Req 9.6). ---
+  const practiceSets = Array.isArray(state.practiceSets) ? state.practiceSets : [];
+  const reviewItems = Array.isArray(state.reviewItems) ? state.reviewItems : [];
+  const sessions = state.sessions || {};
+  const goals = state.goals || {};
+  const today = todayStr();
+
+  // Avg practice accuracy (Req 9.1): null when no questions attempted.
+  const avgAcc = MCAT.dashboardAvgAccuracy(practiceSets);
+  document.getElementById("statAvgAcc").textContent =
+    avgAcc === null ? "--" : `${avgAcc}%`;
+
+  // Reviews due on or before today (Req 9.3): empty state when no review items.
+  document.getElementById("statDueReview").textContent =
+    reviewItems.length ? MCAT.dueCount(reviewItems, today) : "--";
+
+  // Weekly study-hour goal progress (Req 9.4): empty state when no positive goal.
+  const hourGoal = Number(goals.weeklyHourGoal);
+  const hourProgress = MCAT.weeklyHourProgress(sessions, hourGoal, today);
+  document.getElementById("statHourGoal").textContent =
+    isFinite(hourGoal) && hourGoal > 0 ? `${hourProgress.pct}%` : "--";
+
+  // Lowest-accuracy topics preview (Req 9.2): up to three ranked topics.
+  const dashWeak = document.getElementById("dashWeak");
+  const weak = MCAT.dashboardWeaknessPreview(practiceSets);
+  dashWeak.innerHTML = weak.length ? "" : `<li class="empty">No practice data yet.</li>`;
+  weak.forEach(t => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="tag">${t.pct}%</span><span style="flex:1;">${escapeHtml(t.topic)}</span><span class="miss-count">${t.attempted}q</span>`;
+    dashWeak.appendChild(li);
+  });
 }
 
 /* ---------------- Export / Import ---------------- */
@@ -1955,6 +2376,8 @@ renderCalendar();
 renderPractice();
 renderAnalytics();
 renderContent();
+renderCars();
+renderReview();
 document.getElementById("ceDate").value = todayStr();
 document.getElementById("genStart").value = todayStr();
 renderDashboard();

@@ -1667,6 +1667,163 @@ MCAT.mistakeFrequency = mistakeFrequency;
 MCAT.predictedScoreRange = predictedScoreRange;
 
 /* ============================================================
+   Dashboard previews and goal progress (Req 9)
+   ------------------------------------------------------------
+   Pure, DOM-free helpers that summarize state for the dashboard.
+   Each REUSES an existing aggregation helper rather than recomputing,
+   and every function that depends on "now" takes the reference date as
+   an explicit "today" parameter ("YYYY-MM-DD") so the logic stays
+   deterministic and testable (no Date.now() inside the pure layer).
+   The render layer is responsible for the per-metric empty-state
+   messaging required by Req 9.6.
+   ============================================================ */
+
+/* dashboardWeaknessPreview(practiceSets) -> [{ topic, pct, attempted }]
+   (Req 9.2). The dashboard's lowest-accuracy topics list: the first
+   min(3, number of distinct ranked topics) elements of weaknessRanking.
+   Because it is a verbatim prefix of weaknessRanking, it inherits that
+   helper's ascending-accuracy ordering and tie-breaks, and omits any
+   zero-attempted topic. Returns [] when there is no practice data. */
+function dashboardWeaknessPreview(practiceSets) {
+  return weaknessRanking(practiceSets).slice(0, 3);
+}
+
+/* dashboardAvgAccuracy(practiceSets) -> integer 0..100 | null (Req 9.1).
+   Average practice accuracy = Σcorrect / Σattempted * 100 across ALL
+   recorded sets, rounded to the nearest whole number. Returns null when
+   no set has any attempted questions (Σattempted===0) so the render
+   layer can show that metric's independent empty state. Built by
+   REUSING computeGroupAccuracy at whole-number precision. */
+function dashboardAvgAccuracy(practiceSets) {
+  return computeGroupAccuracy(practiceSets, { dp: 0 });
+}
+
+/* weeklyHourProgress(sessions, goalHours, today)
+     -> { hours, goalHours, pct } (Req 9.4).
+   hours = study hours logged in the Monday–Sunday week that contains
+   `today`, taken verbatim from weeklyHours(sessions) (total-preserving,
+   Monday-aligned). pct = round(hours / goalHours * 100), rounded to the
+   nearest whole number. When goalHours is not a positive number there is
+   no goal to measure against, so pct is 0 (no division performed). */
+function weeklyHourProgress(sessions, goalHours, today) {
+  const goal = Number(goalHours);
+  const weekKey = weeklyBucketKey(today);
+  let hours = 0;
+  if (weekKey !== "") {
+    const bucket = weeklyHours(sessions).find(b => b.weekStart === weekKey);
+    if (bucket) hours = bucket.hours;
+  }
+  const pct = isFinite(goal) && goal > 0 ? Math.round((hours / goal) * 100) : 0;
+  return { hours, goalHours: goal, pct };
+}
+
+/* dailyQuestionProgress(practiceSets, goalQ, today)
+     -> { count, goal, pct } (Req 9.4).
+   count = sum of `attempted` across Practice_Sets dated exactly `today`
+   (finite, positive values only, mirroring sumAttempted). pct =
+   round(count / goalQ * 100). When goalQ is not a positive number, pct
+   is 0 (no division performed). */
+function dailyQuestionProgress(practiceSets, goalQ, today) {
+  const goal = Number(goalQ);
+  const todays = Array.isArray(practiceSets)
+    ? practiceSets.filter(s => isPlainObject(s) && s.date === today)
+    : [];
+  const count = sumAttempted(todays);
+  const pct = isFinite(goal) && goal > 0 ? Math.round((count / goal) * 100) : 0;
+  return { count, goal, pct };
+}
+
+MCAT.dashboardWeaknessPreview = dashboardWeaknessPreview;
+MCAT.dashboardAvgAccuracy = dashboardAvgAccuracy;
+MCAT.weeklyHourProgress = weeklyHourProgress;
+MCAT.dailyQuestionProgress = dailyQuestionProgress;
+
+/* ============================================================
+   Goals and Milestones (Req 15.1, 15.4, 15.5, 15.7)
+   ------------------------------------------------------------
+   Pure, DOM-free helpers backing the Goals_Module. The target-score
+   validator (validateTarget) and the weekly-hour / daily-question
+   progress helpers (weeklyHourProgress, dailyQuestionProgress, defined
+   above) already exist and are REUSED by the render layer directly — they
+   are deliberately NOT duplicated here. This block adds only the two
+   pieces unique to the Goals view: a completed-full-length count
+   (Req 15.4) and milestone create/toggle helpers honoring the 100-item
+   cap (Req 15.1, 15.5).
+   ============================================================ */
+
+/* Maximum number of Milestones the Goals_Module stores (Req 15.1). */
+const MAX_MILESTONES = 100;
+
+/* completedFullLengthCount(scores) -> integer >= 0   (Req 15.4)
+   The number of "completed" Full_Length_Records. A record counts as
+   completed when all four of its Section_Scores are valid integers in
+   118..132 — REUSING validateSections so "complete" stays consistent
+   with the Full_Length_Tracker's own validation rather than introducing
+   a second notion. A non-array `scores`, or records with missing/invalid
+   sections, contribute nothing, so the result is always a non-negative
+   integer. */
+function completedFullLengthCount(scores) {
+  const arr = Array.isArray(scores) ? scores : [];
+  let count = 0;
+  for (const rec of arr) {
+    if (validateSections(rec).ok) count++;
+  }
+  return count;
+}
+
+/* validateMilestone(text, currentCount) ->
+     { ok: true, value } | { ok: false, reason }   (Req 15.1)
+
+   Gate for adding a Milestone, mirroring the checklist-item validator's
+   shape. A candidate is accepted IF AND ONLY IF:
+     - the current milestone count is below the 100-item cap, AND
+     - `text` is a string whose trimmed form is non-empty (a milestone
+       must describe a goal), AND
+     - the trimmed text is at most 200 characters.
+   On success the trimmed text is returned as `value`, ready to store in a
+   { id, text, done:false } milestone. Rejected candidates leave the list
+   unchanged (the render layer retains prior state). */
+function validateMilestone(text, currentCount) {
+  const count = Number(currentCount);
+  if (isFinite(count) && count >= MAX_MILESTONES) {
+    return { ok: false, reason: "Milestone list is full (maximum 100 milestones)." };
+  }
+  if (typeof text !== "string") {
+    return { ok: false, reason: "Milestone text must contain at least 1 character." };
+  }
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return { ok: false, reason: "Milestone text must contain at least 1 character." };
+  }
+  if (trimmed.length > 200) {
+    return { ok: false, reason: "Milestone text must be 200 characters or fewer." };
+  }
+  return { ok: true, value: trimmed };
+}
+
+/* toggleMilestone(milestones, id) -> Milestone[]   (Req 15.5)
+   Returns a NEW array (non-mutating) in which the milestone whose `id`
+   matches `id` has its `done` flag flipped; every other milestone is
+   passed through unchanged. The id comparison tolerates number/string
+   representations. A non-array input yields []. The returned array is
+   plain data; persisting it via save() is what makes the toggled state
+   survive reloads (Req 15.5). */
+function toggleMilestone(milestones, id) {
+  const arr = Array.isArray(milestones) ? milestones : [];
+  const target = String(id);
+  return arr.map(m =>
+    isPlainObject(m) && m.id != null && String(m.id) === target
+      ? { ...m, done: !(m.done === true) }
+      : m
+  );
+}
+
+MCAT.MAX_MILESTONES = MAX_MILESTONES;
+MCAT.completedFullLengthCount = completedFullLengthCount;
+MCAT.validateMilestone = validateMilestone;
+MCAT.toggleMilestone = toggleMilestone;
+
+/* ============================================================
    Review / Spaced-Repetition Tracker (Req 11)
    ------------------------------------------------------------
    Pure, DOM-free spaced-repetition math built on the shared

@@ -734,3 +734,306 @@ html, body { transition: background .35s ease, color .35s ease; }
 }
 .qtype-acc .pct,
 #carsAccByType .pct { font-weight: 700; color: var(--accent-2); font-variant-numeric: tabular-nums; }
+
+/* ---- Review / Spaced-Repetition Tracker (Req 11) ---- */
+/* Summary row: the "Due today" and "Retention rate" panels sit side by side and
+   collapse to a single column on narrow screens (matches .dash-row). */
+.review-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+/* Due-today count (Req 11.7) + retention rate (Req 11.8-11.9, may read "N/A"):
+   prominent accent stats, consistent with the #carsAvgMinutes / .stat-num idioms.
+   Defensive selectors cover whatever element the render layer drops in (a bare
+   value, "N/A", or a wrapped span). */
+#reviewDue, #reviewDue .stat-num,
+#reviewRetention, #reviewRetention .stat-num {
+  font-size: 34px; font-weight: 800; color: var(--accent-2);
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+/* A trailing unit/label inside either stat stays small + muted. */
+#reviewDue .stat-label, #reviewDue small,
+#reviewRetention .stat-label, #reviewRetention small {
+  font-size: 12px; font-weight: 500; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+
+/* Topics by retention (Req 11.10, lowest first): ranked rows where the topic
+   label grows and the rate is right-aligned with tabular figures, separated by
+   subtle borders (matches the #anWeakness / .content-topic-row pattern).
+   Defensive #reviewTopics > * fallback covers the render layer's markup. */
+#reviewTopics .topic-rate-row,
+#reviewTopics > * {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 2px; border-bottom: 1px solid var(--line);
+  font-size: 14px; color: var(--text);
+}
+#reviewTopics > *:last-child { border-bottom: none; }
+#reviewTopics .topic-rate-label,
+#reviewTopics > * > :first-child { flex: 1; min-width: 0; }
+#reviewTopics .topic-rate-value,
+#reviewTopics > * > :last-child {
+  flex-shrink: 0; text-align: right;
+  font-weight: 700; color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Review items list: stacked cards (reuses the .task-item / .app-card look) with
+   a left-border state cue, a growing topic+content block, a state badge, and
+   reviewed/missed action buttons. Defensive #reviewList > * fallback covers the
+   render layer regardless of the exact class names it emits. */
+#reviewList { display: flex; flex-direction: column; gap: 8px; }
+.review-item,
+#reviewList > * {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-left: 3px solid transparent; border-radius: 10px; padding: 13px 15px;
+}
+.review-item:hover { border-color: var(--accent); }
+
+/* Topic + content text block grows to fill the row. */
+.review-item .review-body,
+#reviewList > * > :first-child { flex: 1; min-width: 0; }
+.review-item .review-topic { font-size: 14px; font-weight: 600; }
+.review-item .review-content { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+
+/* State badge (Req 11.1-11.6): small pill reusing the .status-pill look, colored
+   per state via a data-state attribute (theme-safe through the shared vars). */
+.review-state {
+  font-size: 11px; padding: 3px 9px; border-radius: 12px; flex-shrink: 0;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--muted);
+  text-transform: capitalize;
+}
+.review-state[data-state="new"] { color: var(--low); border-color: var(--low); }
+.review-state[data-state="due"] { color: var(--red); border-color: var(--red); }
+.review-state[data-state="reviewed"] { color: var(--yellow); border-color: var(--yellow); }
+.review-state[data-state="mature"] { color: var(--green); border-color: var(--green); }
+.review-state[data-state="missed"] { color: var(--red); border-color: var(--red); }
+
+/* Left-border state cue on the whole item, mirroring .content-topic-row. */
+.review-item[data-state="due"] { border-left-color: var(--red); }
+.review-item[data-state="reviewed"] { border-left-color: var(--yellow); }
+.review-item[data-state="mature"] { border-left-color: var(--green); }
+.review-item[data-state="missed"] { border-left-color: var(--red); }
+
+/* Reviewed / missed action buttons (Req 11.4, 11.6): small, consistent with the
+   .app-card .a-actions button idiom, with green/red intent on hover. */
+.review-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.review-actions button {
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+  font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.review-actions button:hover { color: var(--text); border-color: var(--accent); }
+.review-actions .mark-reviewed:hover { color: var(--green); border-color: var(--green); }
+.review-actions .mark-missed:hover { color: var(--red); border-color: var(--red); }
+
+@media (max-width: 880px) {
+  .review-summary { grid-template-columns: 1fr; }
+}
+
+/* ---------------- Dashboard enhancements (Req 9) ---------------- */
+
+/* The new dashboard stat-cards (avg practice accuracy, reviews due today, and
+   the weekly-hour goal) reuse the existing .stat-card / .stat-num look. Tabular
+   figures keep the numbers from jittering as they update. */
+#statAvgAcc, #statDueReview, #statHourGoal {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Weekly-hour goal progress (Req 9.4): the stat shows a percent value and an
+   optional progress bar stacked beneath it. The bar is theme-safe through the
+   shared vars. Defensive selectors cover whatever the render layer drops in
+   (a bare percent, a wrapped value, or a value + bar). */
+#statHourGoal { display: flex; flex-direction: column; gap: 8px; }
+.goal-bar {
+  height: 7px; border-radius: 6px; background: var(--panel-2);
+  border: 1px solid var(--line); overflow: hidden;
+}
+.goal-fill {
+  display: block; height: 100%; border-radius: 6px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width .35s ease;
+}
+
+/* Lowest-accuracy topics preview (Req 9.2): ranked rows in #dashWeak where the
+   topic label grows and the accuracy percent is right-aligned with tabular
+   figures and an accent color (mirrors the #anWeakness / #reviewTopics idiom).
+   .mini-topics already supplies the flex row + dividers; these add the value
+   treatment. Defensive child fallbacks cover the render layer's exact markup. */
+#dashWeak li:not(.empty) > :first-child,
+#dashWeak .weak-topic { flex: 1; min-width: 0; }
+#dashWeak .weak-pct,
+#dashWeak li:not(.empty) > :last-child {
+  flex-shrink: 0; text-align: right; font-weight: 700;
+  color: var(--accent-2); font-variant-numeric: tabular-nums;
+}
+
+/* Per-metric empty states (Req 9.6): each metric renders its own empty-state
+   independently, so a metric with missing data never blanks a metric that has
+   data. List empty-states reuse the shared .empty look; stat-card empty-states
+   show a muted, slightly smaller value than a populated figure. */
+.stat-num.empty, .stat-num[data-empty="true"], .metric-empty {
+  color: var(--muted); font-size: 15px; font-weight: 500;
+}
+
+/* ---------------- Resource Tracker (Req 12) ---------------- */
+/* The editable tracker lives below the existing static resource links. Its
+   second in-view header gets top breathing room so it reads as a distinct
+   section from the resource-link grid above it. */
+.resource-tracker-head { margin-top: 28px; }
+
+/* The entry form reuses .cars-form (flex / align-end / wrap) already defined
+   above; nothing extra needed there. The form-level error banner reuses the
+   shared .empty-state look but reads as an error via accent-red coloring
+   (Req 12.4, 12.5). */
+#resourceFormError {
+  color: var(--red); border: 1px solid var(--red);
+  background: rgba(239,91,110,.10); border-radius: var(--radius);
+  text-align: left; padding: 12px 14px; margin-bottom: 18px; font-size: 13px;
+}
+
+/* Tracked-resources table: mirrors .score-table / .cars-table / .practice-table
+   so it stays visually consistent with the other trackers. */
+.resource-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.resource-table th {
+  text-align: left; color: var(--muted); font-size: 11px; font-weight: 600;
+  padding: 8px 10px; border-bottom: 1px solid var(--line);
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.resource-table td {
+  padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle;
+}
+.resource-table tr:last-child td { border-bottom: none; }
+.resource-table .res-tracker-name { font-weight: 600; }
+.resource-table .res-tracker-type,
+.resource-table .res-tracker-notes { color: var(--muted); }
+/* Numeric cells (completed / total, accuracy) line up cleanly. */
+.resource-table .res-tracker-count,
+.resource-table .res-tracker-accuracy { font-variant-numeric: tabular-nums; }
+
+/* Completion percentage (Req 12.2, 12.3): a tabular accent figure with an
+   optional thin progress bar beneath it, reusing the .goal-bar / .goal-fill
+   treatment from the dashboard goal stat. Defensive fallbacks cover whatever
+   the render layer emits in the Completion cell. */
+.resource-completion { display: flex; flex-direction: column; gap: 6px; min-width: 90px; }
+.resource-completion .pct,
+.res-tracker-completion .pct {
+  font-weight: 700; color: var(--accent-2); font-variant-numeric: tabular-nums;
+}
+.resource-completion .resource-bar,
+.res-tracker-completion .resource-bar {
+  height: 7px; border-radius: 6px; background: var(--panel-2);
+  border: 1px solid var(--line); overflow: hidden;
+}
+.resource-completion .resource-fill,
+.res-tracker-completion .resource-fill {
+  display: block; height: 100%; border-radius: 6px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width .35s ease;
+}
+
+/* Priority pill (Req 12.1, 12.7): small capsule colored per level via a
+   data-priority attribute (high / med / low), reusing the .review-state pill
+   look so it stays theme-safe. A .prio-* class fallback covers the alternate
+   markup convention used elsewhere in the app. */
+.resource-priority,
+.resource-table .priority-pill {
+  display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--muted);
+  text-transform: capitalize; font-weight: 600;
+}
+.resource-priority[data-priority="high"],
+.resource-priority.high, .priority-pill.high { color: var(--red); border-color: var(--red); }
+.resource-priority[data-priority="med"],
+.resource-priority.med, .priority-pill.med { color: var(--yellow); border-color: var(--yellow); }
+.resource-priority[data-priority="low"],
+.resource-priority.low, .priority-pill.low { color: var(--green); border-color: var(--green); }
+
+/* Per-row delete action (last, unlabeled column): small, muted, turns red on
+   hover, consistent with the .review-actions button idiom. */
+.resource-table .res-tracker-delete {
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+  font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.resource-table .res-tracker-delete:hover { color: var(--red); border-color: var(--red); }
+
+/* The "Order by priority" control (Req 12.7) already uses .btn.ghost.small from
+   the shared button system in the .panel-head, so no extra rules are needed.
+   #resourceTrackerEmpty reuses the shared .empty-state look (Req 12 empty
+   state) defined above. */
+
+/* ---- Formula & Equation Sheet (Req 13) ----
+   Reuses the shared design language: .panel for sections, .chip for the tag
+   filters (#formulaTags.tag-chips), .ghost-btn for the recall/reveal controls,
+   .empty-state for the no-match message, and the html[data-theme] var()s so it
+   stays theme-safe in both dark and light. Only new, formula-specific layout
+   lives here. */
+
+/* Search tools row: the search field reuses .score-field.grow, so this just
+   gives the form some breathing room below the view header. */
+.formula-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 18px; }
+
+/* Tag-filter chips (Req 13.9): a wrapping row of .chip toggles. The container
+   is shared with any future tag-chip UI; individual chips reuse .chip / .chip.active. */
+.tag-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag-chips:empty { display: none; }
+
+/* Formula list: a responsive grid of entry cards that collapses to one column
+   on narrow viewports, mirroring .topic-grid / .chart-grid. */
+.formula-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.formula-list:empty { display: none; }
+
+/* Entry card: panel-2 surface with a left accent rail, matching .topic-card. */
+.formula-entry {
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-left: 4px solid var(--line); border-radius: 12px;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+}
+
+.formula-main { display: flex; flex-direction: column; gap: 8px; }
+.formula-name { font-size: 15px; font-weight: 600; color: var(--text); }
+
+/* The equation itself: monospace + a faint inset surface so it reads as a
+   distinct, copy-able expression. */
+.formula-expression {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px; color: var(--text); line-height: 1.5;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; overflow-wrap: anywhere;
+}
+
+/* Per-tag pills inside an entry reuse the shared .tag look. */
+.formula-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.formula-tags:empty { display: none; }
+.formula-tags .tag { font-size: 11px; }
+
+/* Controls row: memorized checkbox-label on the left, recall/reveal buttons
+   pushed to the right, wrapping gracefully on small cards. */
+.formula-controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-top: 4px; border-top: 1px solid var(--line);
+}
+.formula-memorized {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--muted); cursor: pointer; user-select: none;
+}
+.formula-memorized input { width: auto; padding: 0; margin: 0; accent-color: var(--accent-2); cursor: pointer; }
+.formula-recall-toggle, .formula-reveal { margin-left: auto; }
+.formula-reveal + .formula-recall-toggle,
+.formula-recall-toggle + .formula-reveal { margin-left: 8px; }
+
+/* Memorized state (Req 13.5, 13.6): a green accent rail + label so memorized
+   entries are scannable at a glance. Works whether the render layer flags the
+   card with a .memorized class or just checks the toggle (:has fallback). */
+.formula-entry.memorized,
+.formula-entry:has(.formula-memorized-toggle:checked) { border-left-color: var(--accent-2); }
+.formula-entry.memorized .formula-memorized,
+.formula-entry:has(.formula-memorized-toggle:checked) .formula-memorized { color: var(--accent-2); }
+
+/* Practice-recall state (Req 13.7, 13.8): when recall is active the expression
+   is hidden (via the [hidden] attribute the render layer sets) and the Reveal
+   control is shown. The active toggle reads as accented; the recalling card
+   gets a subtle accent rail so it's obvious which entry is being self-tested. */
+.formula-recall-toggle.active,
+.formula-entry.recall .formula-recall-toggle { color: var(--accent); border-color: var(--accent); }
+.formula-entry.recall { border-left-color: var(--accent); }
