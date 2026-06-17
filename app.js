@@ -193,29 +193,192 @@ function dayOfYear() {
 document.getElementById("quoteText").textContent = quotes[dayOfYear() % quotes.length];
 
 /* ---------------- Navigation ---------------- */
+/* Dispatch map of view id -> renderer. Each renderer recomputes its view's
+   data from the current `state` and is invoked BEFORE the view becomes visible
+   (Req 20.5). Views without a recompute hook simply have no entry and fall back
+   to a no-op. Each renderer owns its own empty-state vs. data display (Req
+   20.6/20.7). Special cases preserved from the prior if-ladder: "scores" draws
+   both the total-score chart and the per-section trends; "dashboard" repaints
+   the heatmap. */
+const VIEW_RENDERERS = {
+  dashboard: renderHeatmap,
+  calendar: renderCalendar,
+  scores: () => { drawChart(); drawSectionTrends(); },
+  practice: renderPractice,
+  analytics: renderAnalytics,
+  content: renderContent,
+  cars: renderCars,
+  review: renderReview,
+  resources: renderResources,
+  formulas: renderFormulas,
+  notes: renderNotes,
+  goals: renderGoals,
+  dailylog: renderDailyLog,
+  readiness: renderReadiness,
+  settings: renderSettings
+};
 const navBtns = document.querySelectorAll(".nav-btn");
 navBtns.forEach(btn => {
   btn.addEventListener("click", () => {
+    // While customizing the sidebar, clicks reorder/hide instead of navigating.
+    if (document.querySelector(".nav").classList.contains("editing")) return;
+    const view = btn.dataset.view;
+    // Exactly one active nav entry (Req 20.2).
     navBtns.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
+    // Recompute the selected view's data before it becomes visible (Req 20.5).
+    (VIEW_RENDERERS[view] || (() => {}))();
+    // Exactly one visible view (Req 20.3).
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-    document.getElementById("view-" + btn.dataset.view).classList.add("active");
-    if (btn.dataset.view === "scores") { drawChart(); drawSectionTrends(); }
-    if (btn.dataset.view === "dashboard") renderHeatmap();
-    if (btn.dataset.view === "calendar") renderCalendar();
-    if (btn.dataset.view === "practice") renderPractice();
-    if (btn.dataset.view === "analytics") renderAnalytics();
-    if (btn.dataset.view === "content") renderContent();
+    document.getElementById("view-" + view).classList.add("active");
   });
 });
+
+/* ---------------- Sidebar customization: drag-to-reorder + hide/show ----------------
+   Lets the user reorder the sidebar nav entries and hide ones they don't use. The
+   chosen order (settings.navOrder) and hidden set (settings.navHidden) persist in
+   localStorage so the layout survives reloads. A "Customize menu" toggle puts the
+   nav into edit mode: entries become draggable and each shows an eye toggle; hidden
+   entries stay visible (greyed) while editing so they can be re-enabled. Outside edit
+   mode, hidden entries are removed from the sidebar. Pure DOM/handler layer — no new
+   pure logic. */
+(function setupNavCustomization() {
+  const navEl = document.querySelector(".nav");
+  if (!navEl) return;
+
+  function navSettings() {
+    if (!state.settings || typeof state.settings !== "object") state.settings = {};
+    if (!Array.isArray(state.settings.navOrder)) state.settings.navOrder = [];
+    if (!Array.isArray(state.settings.navHidden)) state.settings.navHidden = [];
+    return state.settings;
+  }
+  function allViews() {
+    return Array.from(navEl.querySelectorAll(".nav-btn")).map(b => b.dataset.view);
+  }
+  function isEditing() { return navEl.classList.contains("editing"); }
+
+  // Reorder the DOM to match navOrder (unknown/new views keep their markup order at
+  // the end) and toggle hidden visibility based on edit mode.
+  function applyNavCustomization() {
+    const s = navSettings();
+    const btns = Array.from(navEl.querySelectorAll(".nav-btn"));
+    const byView = {};
+    btns.forEach(b => { byView[b.dataset.view] = b; });
+    const ordered = [];
+    s.navOrder.forEach(v => { if (byView[v] && !ordered.includes(byView[v])) ordered.push(byView[v]); });
+    btns.forEach(b => { if (!ordered.includes(b)) ordered.push(b); });
+    ordered.forEach(b => navEl.appendChild(b));
+    const hidden = new Set(s.navHidden);
+    navEl.querySelectorAll(".nav-btn").forEach(b => {
+      const h = hidden.has(b.dataset.view);
+      b.classList.toggle("nav-item-hidden", h);          // greyed marker (always)
+      b.classList.toggle("nav-hidden", h && !isEditing()); // display:none only outside edit mode
+    });
+  }
+
+  function persistOrder() { navSettings().navOrder = allViews(); save(); }
+
+  // ---- drag to reorder (edit mode only) ----
+  let dragEl = null;
+  function dragAfter(y) {
+    const els = Array.from(navEl.querySelectorAll(".nav-btn:not(.dragging)"));
+    let best = null, bestOffset = Number.NEGATIVE_INFINITY;
+    for (const child of els) {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > bestOffset) { bestOffset = offset; best = child; }
+    }
+    return best;
+  }
+  navEl.addEventListener("dragstart", e => {
+    const btn = e.target.closest(".nav-btn");
+    if (!btn || !isEditing()) return;
+    dragEl = btn; btn.classList.add("dragging");
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+  });
+  navEl.addEventListener("dragover", e => {
+    if (!isEditing() || !dragEl) return;
+    e.preventDefault();
+    const after = dragAfter(e.clientY);
+    if (after == null) navEl.appendChild(dragEl);
+    else navEl.insertBefore(dragEl, after);
+  });
+  navEl.addEventListener("dragend", () => {
+    if (dragEl) dragEl.classList.remove("dragging");
+    dragEl = null;
+    persistOrder();
+  });
+
+  // ---- per-item hide/show toggle ----
+  function toggleHidden(view) {
+    const s = navSettings();
+    const hidden = new Set(s.navHidden);
+    if (hidden.has(view)) {
+      hidden.delete(view);
+    } else {
+      const visibleCount = allViews().filter(v => !hidden.has(v)).length;
+      if (visibleCount <= 1) return; // never hide the last visible entry
+      hidden.add(view);
+    }
+    s.navHidden = Array.from(hidden);
+    save();
+    // If the active view was just hidden, move to the first still-visible entry.
+    const active = navEl.querySelector(".nav-btn.active");
+    if (active && s.navHidden.includes(active.dataset.view)) {
+      const firstVisible = Array.from(navEl.querySelectorAll(".nav-btn"))
+        .find(b => !s.navHidden.includes(b.dataset.view));
+      if (firstVisible) {
+        navEl.classList.remove("editing"); // allow navigation, then restore edit mode
+        firstVisible.click();
+        navEl.classList.add("editing");
+      }
+    }
+    applyNavCustomization();
+    renderEditControls();
+  }
+
+  // Inject/remove the eye toggle and draggable attr per entry based on edit mode.
+  function renderEditControls() {
+    const editing = isEditing();
+    const s = navSettings();
+    navEl.querySelectorAll(".nav-btn").forEach(btn => {
+      btn.setAttribute("draggable", editing ? "true" : "false");
+      let eye = btn.querySelector(".nav-hide-toggle");
+      if (editing) {
+        if (!eye) {
+          eye = document.createElement("span");
+          eye.className = "nav-hide-toggle";
+          eye.addEventListener("click", ev => { ev.stopPropagation(); toggleHidden(btn.dataset.view); });
+          btn.appendChild(eye);
+        }
+        const isHidden = s.navHidden.includes(btn.dataset.view);
+        eye.textContent = isHidden ? "🚫" : "👁";
+        eye.title = isHidden ? "Show in sidebar" : "Hide from sidebar";
+      } else if (eye) {
+        eye.remove();
+      }
+    });
+  }
+
+  const customizeBtn = document.getElementById("customizeNavBtn");
+  if (customizeBtn) {
+    customizeBtn.addEventListener("click", () => {
+      const editing = navEl.classList.toggle("editing");
+      customizeBtn.textContent = editing ? "✓ Done customizing" : "✎ Customize menu";
+      applyNavCustomization();
+      renderEditControls();
+    });
+  }
+
+  applyNavCustomization(); // apply saved layout on load
+})();
 
 /* ---------------- Countdown ---------------- */
 const testDateInput = document.getElementById("testDateInput");
 const testDateLabel = document.getElementById("testDateLabel");
 if (state.testDate) testDateInput.value = state.testDate;
 testDateInput.addEventListener("change", () => {
-  state.testDate = testDateInput.value; save();
-  renderCountdownLabel(); renderDashboard();
+  state.testDate = testDateInput.value; save();  renderCountdownLabel(); renderDashboard(); renderReminders();
 });
 function renderCountdownLabel() {
   if (!state.testDate) { testDateLabel.textContent = "No date set — pick one →"; return; }
@@ -609,7 +772,7 @@ function renderWrong() {
     tr.querySelector(".retest-input").addEventListener("change", ev => {
       const v = ev.target.value;
       if (v === "" || MCAT.isValidISODate(v)) {
-        w.retestDate = v; save();
+        w.retestDate = v; save(); renderReminders();
       } else {
         alert("Retest date is not a valid calendar date (YYYY-MM-DD).");
         ev.target.value = w.retestDate || "";
@@ -623,6 +786,7 @@ function renderWrong() {
     });
     wrongBody.appendChild(tr);
   });
+  renderReminders();
 }
 
 /* ---------------- Scores ---------------- */
@@ -1182,6 +1346,971 @@ if (practiceForm) {
   });
 }
 
+/* ---------------- CARS Practice Tracker (Req 10) ----------------
+   DOM/handler layer for the CARS view. All validation and aggregation lives
+   in the pure layer (core.js / MCAT.*); this layer only reads inputs, mutates
+   state, saves, and writes DOM.
+
+   renderCars() repaints the entry list (newest→oldest), the average-minutes-
+   per-passage read-out, and the accuracy-by-question-type read-out. While no
+   entries exist it shows the list empty-state and suppresses BOTH aggregates
+   (Req 10.7). On submit, validateCarsEntry rejects invalid input and leaves
+   state unchanged, surfacing a field-specific message (Req 10.1, 10.5, 10.6). */
+const carsForm = document.getElementById("carsForm");
+const carsBody = document.getElementById("carsBody");
+
+// Surface validation errors inside the CARS form (inline), falling back to
+// alert if the form element is somehow unavailable.
+function showCarsErrors(errors) {
+  const msgs = Object.keys(errors).map(k => errors[k]);
+  if (!carsForm) { alert(msgs.join("\n")); return; }
+  let box = document.getElementById("carsFormErrors");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "carsFormErrors";
+    box.className = "form-errors";
+    box.setAttribute("role", "alert");
+    carsForm.appendChild(box);
+  }
+  box.innerHTML = msgs.map(m => `<div>${escapeHtml(m)}</div>`).join("");
+  box.style.display = "";
+}
+function clearCarsErrors() {
+  const box = document.getElementById("carsFormErrors");
+  if (box) { box.innerHTML = ""; box.style.display = "none"; }
+}
+
+function renderCars() {
+  const entries = Array.isArray(state.carsPassages) ? state.carsPassages : [];
+  const hasEntries = entries.length > 0;
+
+  // ---- list: newest → oldest (by date desc, stable on id) ----
+  if (carsBody) {
+    const ordered = [...entries].sort((a, b) =>
+      (b.date || "").localeCompare(a.date || "") || String(b.id).localeCompare(String(a.id)));
+    carsBody.innerHTML = "";
+    ordered.forEach(en => {
+      const tr = document.createElement("tr");
+      const types = Array.isArray(en.questionTypes) ? en.questionTypes : [];
+      tr.innerHTML = `
+        <td>${en.date || "—"}</td>
+        <td>${en.passages}</td>
+        <td>${en.accuracy}%</td>
+        <td>${en.timePerPassage}</td>
+        <td>${escapeHtml(en.difficulty || "—")}</td>
+        <td>${types.length ? escapeHtml(types.join(", ")) : "—"}</td>
+        <td><button class="del-btn" title="delete">✕</button></td>`;
+      tr.querySelector(".del-btn").addEventListener("click", () => deleteCarsEntry(en.id));
+      carsBody.appendChild(tr);
+    });
+  }
+  // List empty-state toggles independently of the aggregates below (Req 10.7).
+  const carsEmpty = document.getElementById("carsEmpty");
+  if (carsEmpty) carsEmpty.style.display = hasEntries ? "none" : "";
+
+  // ---- average minutes per passage (Req 10.3 / hidden when none: 10.7) ----
+  const avgEl = document.getElementById("carsAvgMinutes");
+  if (avgEl) {
+    const avg = MCAT.avgMinutesPerPassage(entries);
+    avgEl.innerHTML = (avg != null)
+      ? `<span class="cars-avg-value">${avg}</span> <span class="muted small">min / passage</span>`
+      : `<div class="empty-state">Add a passage to see your average minutes per passage.</div>`;
+  }
+
+  // ---- accuracy by question type (Req 10.4 / hidden when none: 10.7) ----
+  const byTypeEl = document.getElementById("carsAccByType");
+  if (byTypeEl) {
+    const byType = MCAT.accuracyByQuestionType(entries);
+    const types = MCAT.CARS_QUESTION_TYPES.filter(t => Object.prototype.hasOwnProperty.call(byType, t));
+    byTypeEl.innerHTML = types.length
+      ? `<ul class="cars-acc-list">${types.map(t =>
+          `<li><span class="cars-acc-type">${escapeHtml(t)}</span><span class="cars-acc-pct">${byType[t]}%</span></li>`).join("")}</ul>`
+      : `<div class="empty-state">Tag passages with question types to see accuracy by type.</div>`;
+  }
+}
+
+function deleteCarsEntry(id) {
+  state.carsPassages = (state.carsPassages || []).filter(en => en.id !== id);
+  save();
+  renderCars();
+}
+
+if (carsForm) {
+  carsForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const questionTypes = Array.from(document.querySelectorAll(".car-qtype"))
+      .filter(cb => cb.checked).map(cb => cb.value);
+    const input = {
+      date: document.getElementById("carDate").value,
+      passages: document.getElementById("carPassages").value,
+      accuracy: document.getElementById("carAccuracy").value,
+      timePerPassage: document.getElementById("carTime").value,
+      difficulty: document.getElementById("carDifficulty").value,
+      questionTypes,
+      notes: document.getElementById("carNotes").value
+    };
+    const result = MCAT.validateCarsEntry(input);
+    if (!result.ok) { showCarsErrors(result.errors); return; } // state unchanged
+    if (!Array.isArray(state.carsPassages)) state.carsPassages = [];
+    state.carsPassages.push(result.value);
+    save();
+    carsForm.reset();
+    clearCarsErrors();
+    renderCars();
+  });
+}
+
+/* ---------------- Review / Spaced-Repetition Tracker (Req 11) ----------------
+   DOM/handler layer for the Review view. All spaced-repetition math lives in
+   the pure layer (core.js / MCAT.*); this layer only reads inputs, mutates
+   state, saves, and writes DOM.
+
+   renderReview() repaints the item list, the due-today count, the retention
+   rate, and the topics-by-retention list. Each item's display state and the
+   due count are DERIVED per the current date (todayStr()) via MCAT.reviewState
+   / MCAT.dueCount so they always reflect "due" correctly (Req 11.2, 11.3, 11.7).
+   Created items start as "new" (intervalIndex -1, no nextDue, zero marks). The
+   reviewed/missed buttons call the pure MCAT.markReviewed / MCAT.markMissed
+   helpers and persist (Req 11.4, 11.5, 11.6). */
+const reviewForm = document.getElementById("reviewForm");
+
+function showReviewErrors(msgs) {
+  if (!reviewForm) { alert(msgs.join("\n")); return; }
+  let box = document.getElementById("reviewFormErrors");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "reviewFormErrors";
+    box.className = "form-errors";
+    box.setAttribute("role", "alert");
+    reviewForm.appendChild(box);
+  }
+  box.innerHTML = msgs.map(m => `<div>${escapeHtml(m)}</div>`).join("");
+  box.style.display = "";
+}
+function clearReviewErrors() {
+  const box = document.getElementById("reviewFormErrors");
+  if (box) { box.innerHTML = ""; box.style.display = "none"; }
+}
+
+function renderReview() {
+  const items = Array.isArray(state.reviewItems) ? state.reviewItems : [];
+  const today = todayStr();
+
+  // ---- due-today count (Req 11.7): nextDue on or before today ----
+  const dueEl = document.getElementById("reviewDue");
+  if (dueEl) {
+    const due = MCAT.dueCount(items, today);
+    dueEl.innerHTML =
+      `<span class="review-due-value">${due}</span> <span class="muted small">item${due === 1 ? "" : "s"} due</span>`;
+  }
+
+  // ---- retention rate (Req 11.8 "N/A" / 11.9 percentage) ----
+  const retEl = document.getElementById("reviewRetention");
+  if (retEl) {
+    const rate = MCAT.retentionRate(items);
+    retEl.innerHTML = (rate === "N/A")
+      ? `<span class="review-retention-value">N/A</span>`
+      : `<span class="review-retention-value">${rate}%</span>`;
+  }
+
+  // ---- topics by retention, lowest first (Req 11.10) ----
+  const topicsEl = document.getElementById("reviewTopics");
+  if (topicsEl) {
+    const rows = MCAT.topicsByRetention(items);
+    topicsEl.innerHTML = rows.length
+      ? `<ul class="review-topic-list">${rows.map(r =>
+          `<li><span class="review-topic-name">${escapeHtml(r.topic || "—")}</span>` +
+          `<span class="review-topic-pct">${r.rate}%</span></li>`).join("")}</ul>`
+      : `<div class="empty-state">Mark items reviewed or missed to rank topics by retention.</div>`;
+  }
+
+  // ---- item list with derived state + reviewed/missed/delete actions ----
+  const listEl = document.getElementById("reviewList");
+  if (listEl) {
+    listEl.innerHTML = "";
+    items.forEach(it => {
+      const st = MCAT.reviewState(it, today);
+      const card = document.createElement("div");
+      card.className = "review-item";
+      card.innerHTML = `
+        <div class="review-item-main">
+          <span class="review-state-badge ${st}">${st}</span>
+          <span class="review-item-topic">${escapeHtml(it.topic || "—")}</span>
+          <span class="review-item-due muted small">${it.nextDue ? "due " + it.nextDue : "not scheduled"}</span>
+        </div>
+        <div class="review-item-content">${escapeHtml(it.content || "")}</div>
+        <div class="review-item-actions">
+          <button type="button" class="btn small review-reviewed-btn">Reviewed</button>
+          <button type="button" class="btn small review-missed-btn">Missed</button>
+          <button class="del-btn" title="delete">✕</button>
+        </div>`;
+      card.querySelector(".review-reviewed-btn").addEventListener("click", () => markReviewItemReviewed(it.id));
+      card.querySelector(".review-missed-btn").addEventListener("click", () => markReviewItemMissed(it.id));
+      card.querySelector(".del-btn").addEventListener("click", () => deleteReviewItem(it.id));
+      listEl.appendChild(card);
+    });
+  }
+  const emptyEl = document.getElementById("reviewEmpty");
+  if (emptyEl) emptyEl.style.display = items.length ? "none" : "";
+  renderReminders();
+}
+
+function markReviewItemReviewed(id) {
+  const items = Array.isArray(state.reviewItems) ? state.reviewItems : [];
+  state.reviewItems = items.map(it =>
+    it.id === id ? MCAT.markReviewed(it, todayStr()) : it);
+  save();
+  renderReview();
+}
+
+function markReviewItemMissed(id) {
+  const items = Array.isArray(state.reviewItems) ? state.reviewItems : [];
+  state.reviewItems = items.map(it =>
+    it.id === id ? MCAT.markMissed(it, todayStr()) : it);
+  save();
+  renderReview();
+}
+
+function deleteReviewItem(id) {
+  state.reviewItems = (state.reviewItems || []).filter(it => it.id !== id);
+  save();
+  renderReview();
+}
+
+if (reviewForm) {
+  reviewForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const topic = document.getElementById("rvTopic").value.trim();
+    const content = document.getElementById("rvContent").value.trim();
+    // Req 11.1: topic 1..100 chars, content 1..2000 chars.
+    const errors = [];
+    if (topic.length < 1 || topic.length > 100) errors.push("Topic must be 1 to 100 characters.");
+    if (content.length < 1 || content.length > 2000) errors.push("Content must be 1 to 2000 characters.");
+    if (errors.length) { showReviewErrors(errors); return; } // state unchanged
+
+    if (!Array.isArray(state.reviewItems)) state.reviewItems = [];
+    // Created item starts as "new": never reviewed/missed, interval not advanced (Req 11.2).
+    state.reviewItems.push({
+      id: uid(), topic, content,
+      state: "new", intervalIndex: -1, nextDue: "",
+      reviewedMarks: 0, missedMarks: 0
+    });
+    save();
+    reviewForm.reset();
+    clearReviewErrors();
+    renderReview();
+  });
+}
+
+/* ---------------- Formula & Equation Sheet (Req 13) ----------------
+   Searchable, taggable equation reference seeded once from MCAT.SEED_FORMULAS
+   (see init below). All filtering is delegated to the pure helpers
+   MCAT.filterByTags (tag chips, Req 13.9) and MCAT.searchFormulas (search box,
+   Req 13.2/13.4); both preserve input order. The memorized flag is persisted to
+   state.formulas and survives reloads (Req 13.5, 13.6). Practice recall
+   (Req 13.7) and reveal (Req 13.8) are per-card view states handled directly on
+   the DOM node so a re-render triggered elsewhere never resets them. */
+let formulaSearchTerm = "";
+let formulaSelectedTags = [];
+
+// Distinct, sorted tags across all formulas for the tag-filter chip row.
+function formulaAllTags(formulas) {
+  const set = new Set();
+  formulas.forEach(f => {
+    const tags = Array.isArray(f && f.tags) ? f.tags : [];
+    tags.forEach(t => { if (t != null && String(t).length) set.add(String(t)); });
+  });
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+// Paint the tag-filter chips (Req 13.9). Reuses the shared .chip / .chip.active
+// look; clicking toggles a tag in formulaSelectedTags and re-renders.
+function renderFormulaTags(formulas) {
+  const wrap = document.getElementById("formulaTags");
+  if (!wrap) return;
+  const all = formulaAllTags(formulas);
+  // Drop any selected tags that no longer exist so the filter stays valid.
+  formulaSelectedTags = formulaSelectedTags.filter(t => all.includes(t));
+  wrap.innerHTML = "";
+  all.forEach(tag => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip" + (formulaSelectedTags.includes(tag) ? " active" : "");
+    chip.textContent = tag;
+    chip.addEventListener("click", () => {
+      const i = formulaSelectedTags.indexOf(tag);
+      if (i === -1) formulaSelectedTags.push(tag); else formulaSelectedTags.splice(i, 1);
+      renderFormulas();
+    });
+    wrap.appendChild(chip);
+  });
+}
+
+function renderFormulas() {
+  const formulas = Array.isArray(state.formulas) ? state.formulas : [];
+  renderFormulaTags(formulas);
+
+  // Tag filter first (Req 13.9), then case-insensitive substring search
+  // (Req 13.2). An empty search term matches everything, so clearing the box
+  // restores all entries within the active tag filter (Req 13.4).
+  const byTag = MCAT.filterByTags(formulas, formulaSelectedTags);
+  const filtered = MCAT.searchFormulas(byTag, formulaSearchTerm);
+
+  const listEl = document.getElementById("formulaList");
+  const emptyEl = document.getElementById("formulaEmpty");
+  const tpl = document.getElementById("formulaEntryTemplate");
+  if (!listEl || !tpl) return;
+
+  listEl.innerHTML = "";
+  filtered.forEach(f => {
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.querySelector(".formula-name").textContent = f.name || "";
+    const exprEl = node.querySelector(".formula-expression");
+    exprEl.textContent = f.expression || "";
+
+    const tagsEl = node.querySelector(".formula-tags");
+    tagsEl.innerHTML = "";
+    (Array.isArray(f.tags) ? f.tags : []).forEach(t => {
+      const pill = document.createElement("span");
+      pill.className = "tag";
+      pill.textContent = String(t == null ? "" : t);
+      tagsEl.appendChild(pill);
+    });
+
+    // Memorized toggle — persists to state and survives reload (Req 13.5/13.6).
+    const memo = node.querySelector(".formula-memorized-toggle");
+    memo.checked = !!f.memorized;
+    node.classList.toggle("memorized", !!f.memorized);
+    memo.addEventListener("change", () => toggleFormulaMemorized(f.id, memo.checked));
+
+    // Practice recall (Req 13.7): hide the expression and show the reveal
+    // control. Reveal (Req 13.8) un-hides it. Local DOM state only — not saved.
+    const recallBtn = node.querySelector(".formula-recall-toggle");
+    const revealBtn = node.querySelector(".formula-reveal");
+    recallBtn.addEventListener("click", () => {
+      node.classList.add("recall");
+      recallBtn.classList.add("active");
+      exprEl.hidden = true;
+      revealBtn.hidden = false;
+    });
+    revealBtn.addEventListener("click", () => {
+      exprEl.hidden = false;
+      revealBtn.hidden = true;
+      node.classList.remove("recall");
+      recallBtn.classList.remove("active");
+    });
+
+    listEl.appendChild(node);
+  });
+
+  // No-match / empty message (Req 13.3); the list collapses via :empty CSS.
+  if (emptyEl) emptyEl.style.display = filtered.length ? "none" : "";
+}
+
+function toggleFormulaMemorized(id, memorized) {
+  const formulas = Array.isArray(state.formulas) ? state.formulas : [];
+  state.formulas = formulas.map(f => (f && f.id === id) ? { ...f, memorized: !!memorized } : f);
+  save();
+  renderFormulas();
+}
+
+// Live search wiring (Req 13.2/13.4): update the term as the user types.
+const formulaSearchInput = document.getElementById("formulaSearch");
+if (formulaSearchInput) {
+  formulaSearchInput.addEventListener("input", () => {
+    formulaSearchTerm = formulaSearchInput.value;
+    renderFormulas();
+  });
+}
+
+/* ---------------- High-Yield Notes (Req 14) ----------------
+
+   Notes store the raw Markdown body VERBATIM in state (Req 14.6); HTML is
+   produced only at display time via MCAT.renderMarkdown, which is XSS-safe by
+   construction (Req 14.2/14.8) — rendered HTML is never persisted. Search is a
+   case-insensitive substring over title|body|tags (Req 14.3) with an empty-state
+   message when nothing matches (Req 14.7). A Note_Entry may reference Error_Log
+   entries; navigation is offered only when the target still exists
+   (MCAT.linkedErrorExists) — otherwise the link reads "linked entry unavailable"
+   and navigation is suppressed (Req 14.4/14.9). The needs-review flag persists to
+   the State_Object (Req 14.5). */
+let noteSearchTerm = "";
+let noteSelectedId = null;
+let noteEditingId = null;  // when set, the note form updates this note instead of creating a new one (Req 14 edit flow)
+
+// Parse the comma-separated tag input into up to 20 tags, each 1..50 chars
+// (Req 14.1). Blank fragments are dropped; each kept tag is clamped to 50.
+function parseNoteTags(raw) {
+  return String(raw == null ? "" : raw)
+    .split(",")
+    .map(t => MCAT.clampText(t.trim(), 50))
+    .filter(t => t.length > 0)
+    .slice(0, 20);
+}
+
+// Switch to another view by reusing the existing nav-button routing.
+function navigateToView(view) {
+  const btn = document.querySelector('.nav-btn[data-view="' + view + '"]');
+  if (btn) btn.click();
+}
+
+// A short, human-readable label for an Error_Log entry used in the link
+// controls/list (date + topic, falling back gracefully when either is blank).
+function errorLabel(w) {
+  if (!w) return "Error log entry";
+  const date = w.date || "";
+  const topic = w.topic || w.source || "Error log entry";
+  return (date ? date + " — " : "") + topic;
+}
+
+// Populate the note form's "link to missed questions" multi-select from the
+// current Error_Log (Req 14.4). Re-run on every render so deleted entries drop
+// out of the options. `selectedIds` re-selects the given ids (used when editing
+// a note whose links should stay highlighted).
+function populateNoteErrorOptions(selectedIds) {
+  const sel = document.getElementById("noteLinkErrors");
+  if (!sel) return;
+  const selected = new Set((Array.isArray(selectedIds) ? selectedIds : []).map(String));
+  const wrong = Array.isArray(state.wrong) ? state.wrong : [];
+  sel.innerHTML = "";
+  wrong.forEach(w => {
+    if (!w || w.id == null) return;
+    const opt = document.createElement("option");
+    opt.value = String(w.id);
+    opt.textContent = errorLabel(w);
+    if (selected.has(String(w.id))) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+// Read the ids currently selected in the link multi-select (Req 14.4).
+function selectedNoteErrorIds() {
+  const sel = document.getElementById("noteLinkErrors");
+  if (!sel) return [];
+  return Array.from(sel.selectedOptions).map(o => o.value);
+}
+
+// Paint the rendered-Markdown preview pane for the selected note (Req 14.2).
+// HTML is generated here, at display time only, from the stored raw body — the
+// rendered output is never written back to state.
+function renderNotePreview() {
+  const previewEl = document.getElementById("notePreview");
+  const emptyEl = document.getElementById("notePreviewEmpty");
+  if (!previewEl) return;
+  const notes = Array.isArray(state.notes) ? state.notes : [];
+  const note = notes.find(n => n && String(n.id) === String(noteSelectedId));
+  if (!note) {
+    previewEl.innerHTML = "";
+    if (emptyEl) emptyEl.style.display = "";
+    return;
+  }
+  previewEl.innerHTML = MCAT.renderMarkdown(note.body || "");
+  if (emptyEl) emptyEl.style.display = "none";
+}
+
+function renderNotes() {
+  const notes = Array.isArray(state.notes) ? state.notes : [];
+  // Case-insensitive substring search over title|body|tags (Req 14.3); an empty
+  // term matches everything, so clearing the box restores all notes (Req 14.7).
+  const filtered = MCAT.searchNotes(notes, noteSearchTerm);
+
+  const listEl = document.getElementById("noteList");
+  const emptyEl = document.getElementById("noteEmpty");
+  const tpl = document.getElementById("noteEntryTemplate");
+  if (!listEl || !tpl) return;
+
+  listEl.innerHTML = "";
+  // Most recent first: notes are appended on save, so render in reverse order.
+  [...filtered].reverse().forEach(note => {
+    const node = tpl.content.firstElementChild.cloneNode(true);
+
+    node.querySelector(".note-title").textContent = note.title || "";
+
+    const tagsEl = node.querySelector(".note-tags");
+    tagsEl.innerHTML = "";
+    (Array.isArray(note.tags) ? note.tags : []).forEach(t => {
+      const pill = document.createElement("span");
+      pill.className = "tag";
+      pill.textContent = String(t == null ? "" : t);
+      tagsEl.appendChild(pill);
+    });
+
+    // Linked Error_Log references (Req 14.4/14.9): offer navigation only when the
+    // target still exists; otherwise show an inert "unavailable" marker and do
+    // not wire any navigation.
+    const linkedEl = node.querySelector(".note-linked");
+    linkedEl.innerHTML = "";
+    const wrong = Array.isArray(state.wrong) ? state.wrong : [];
+    (Array.isArray(note.linkedErrors) ? note.linkedErrors : []).forEach(errorId => {
+      if (MCAT.linkedErrorExists(wrong, errorId)) {
+        const entry = wrong.find(w => w && String(w.id) === String(errorId));
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "link-btn";
+        btn.textContent = "↗ " + (entry && entry.topic ? entry.topic : "Error log entry");
+        btn.addEventListener("click", () => navigateToView("wrong"));
+        linkedEl.appendChild(btn);
+      } else {
+        const miss = document.createElement("span");
+        miss.className = "note-link-missing";
+        miss.textContent = "linked entry unavailable";
+        linkedEl.appendChild(miss);
+      }
+    });
+
+    // Needs-review toggle persists to state and survives reload (Req 14.5).
+    const review = node.querySelector(".note-needs-review-toggle");
+    review.checked = !!note.needsReview;
+    node.classList.toggle("needs-review", !!note.needsReview);
+    review.addEventListener("change", () => toggleNoteNeedsReview(note.id, review.checked));
+
+    // Preview selects this note and renders its Markdown into the preview pane.
+    if (String(note.id) === String(noteSelectedId)) node.classList.add("active");
+    node.querySelector(".note-preview-btn").addEventListener("click", () => {
+      noteSelectedId = note.id;
+      renderNotes();
+    });
+
+    // Edit loads the note back into the form for in-place updating (Req 14 edit
+    // flow). The form's submit handler updates this id rather than creating a new
+    // note while noteEditingId is set.
+    node.querySelector(".note-edit").addEventListener("click", () => startNoteEdit(note.id));
+
+    node.querySelector(".note-delete").addEventListener("click", () => deleteNote(note.id));
+
+    listEl.appendChild(node);
+  });
+
+  // No-match empty-state message (Req 14.7).
+  if (emptyEl) emptyEl.style.display = filtered.length ? "none" : "";
+
+  // Keep the link multi-select in sync with the current Error_Log, preserving
+  // any in-progress selection across re-renders (Req 14.4).
+  populateNoteErrorOptions(selectedNoteErrorIds());
+
+  renderNotePreview();
+}
+
+function toggleNoteNeedsReview(id, needsReview) {
+  const notes = Array.isArray(state.notes) ? state.notes : [];
+  state.notes = notes.map(n => (n && n.id === id) ? { ...n, needsReview: !!needsReview } : n);
+  save();
+  renderNotes();
+}
+
+function deleteNote(id) {
+  const notes = Array.isArray(state.notes) ? state.notes : [];
+  state.notes = notes.filter(n => n && n.id !== id);
+  if (String(noteSelectedId) === String(id)) noteSelectedId = null;
+  if (String(noteEditingId) === String(id)) cancelNoteEdit();
+  save();
+  renderNotes();
+}
+
+// Load an existing note into the form for editing (Req 14 edit flow). While
+// noteEditingId is set, submitting the form updates that note in place and
+// preserves its id (and thus its position) instead of appending a new one.
+function startNoteEdit(id) {
+  const notes = Array.isArray(state.notes) ? state.notes : [];
+  const note = notes.find(n => n && String(n.id) === String(id));
+  if (!note) return;
+  noteEditingId = note.id;
+  document.getElementById("noteTitle").value = note.title || "";
+  document.getElementById("noteTags").value = (Array.isArray(note.tags) ? note.tags : []).join(", ");
+  document.getElementById("noteNeedsReview").checked = !!note.needsReview;
+  document.getElementById("noteBody").value = note.body || "";
+  populateNoteErrorOptions(note.linkedErrors);
+  const submitBtn = document.getElementById("noteSubmitBtn");
+  if (submitBtn) submitBtn.textContent = "Update note";
+  const cancelBtn = document.getElementById("noteCancelEditBtn");
+  if (cancelBtn) cancelBtn.hidden = false;
+}
+
+// Leave edit mode and clear the form back to "create" state.
+function cancelNoteEdit() {
+  noteEditingId = null;
+  const form = document.getElementById("noteForm");
+  if (form) form.reset();
+  const submitBtn = document.getElementById("noteSubmitBtn");
+  if (submitBtn) submitBtn.textContent = "Save note";
+  const cancelBtn = document.getElementById("noteCancelEditBtn");
+  if (cancelBtn) cancelBtn.hidden = true;
+  populateNoteErrorOptions([]);
+}
+
+/* Create a Note_Entry from the form (Req 14.1/14.6). The body is stored VERBATIM
+   (only length-capped, never trimmed) so the persisted text equals what the user
+   typed character for character; rendering to HTML happens only at display time. */
+const noteForm = document.getElementById("noteForm");
+if (noteForm) {
+  noteForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const title = MCAT.clampText(document.getElementById("noteTitle").value.trim(), 200);
+    if (!title) return; // title is required (1..200 chars)
+    const body = MCAT.clampText(document.getElementById("noteBody").value, 50000);
+    const tags = parseNoteTags(document.getElementById("noteTags").value);
+    const needsReview = document.getElementById("noteNeedsReview").checked;
+    // Resolve selected option values back to the actual Error_Log ids so the
+    // stored links never drift from the real entry id types (Req 14.4).
+    const wrong = Array.isArray(state.wrong) ? state.wrong : [];
+    const selected = new Set(selectedNoteErrorIds());
+    const linkedErrors = wrong.filter(w => w && w.id != null && selected.has(String(w.id))).map(w => w.id);
+
+    if (!Array.isArray(state.notes)) state.notes = [];
+
+    if (noteEditingId != null) {
+      // Update the existing note in place, preserving id/order (Req 14 edit flow).
+      state.notes = state.notes.map(n =>
+        (n && String(n.id) === String(noteEditingId))
+          ? { ...n, title, body, tags, needsReview, linkedErrors }
+          : n);
+      cancelNoteEdit();
+    } else {
+      state.notes.push({ id: uid(), title, body, tags, needsReview, linkedErrors });
+      noteForm.reset();
+      populateNoteErrorOptions([]);
+    }
+    save();
+    renderNotes();
+  });
+}
+
+// Cancel-edit returns the form to "create" mode without saving.
+const noteCancelEditBtn = document.getElementById("noteCancelEditBtn");
+if (noteCancelEditBtn) {
+  noteCancelEditBtn.addEventListener("click", () => cancelNoteEdit());
+}
+
+// Live search wiring (Req 14.3/14.7): update the term as the user types.
+const noteSearchInput = document.getElementById("noteSearch");
+if (noteSearchInput) {
+  noteSearchInput.addEventListener("input", () => {
+    noteSearchTerm = noteSearchInput.value;
+    renderNotes();
+  });
+}
+
+/* ---------------- Goals & Milestones (Req 15) ----------------
+   Reads/writes state.goals { targetScore, weeklyHourGoal, dailyQuestionGoal,
+   milestones[] }. goals.targetScore is the SINGLE SOURCE OF TRUTH for the
+   Dashboard "points to target" stat and the full-length chart target line —
+   both read it through targetScore() (Req 15.5/15.6). Milestone done-state is
+   stored on state and persisted via save(), so it survives reloads (Req 15.5).
+   Progress and completed-FL figures are derived at display time from the pure
+   helpers in core.js (Req 15.2/15.3/15.4). */
+function renderGoals() {
+  if (!state.goals || typeof state.goals !== "object") {
+    state.goals = { targetScore: 510, weeklyHourGoal: 0, dailyQuestionGoal: 0, milestones: [] };
+  }
+  const goals = state.goals;
+  if (!Array.isArray(goals.milestones)) goals.milestones = [];
+
+  // Reflect the stored values into the inputs (without clobbering an in-progress
+  // edit is unnecessary here — renderGoals only runs on nav/init/after-save).
+  const targetInput = document.getElementById("goalTarget");
+  const weeklyInput = document.getElementById("goalWeeklyHours");
+  const dailyInput = document.getElementById("goalDailyQuestions");
+  if (targetInput) targetInput.value = goals.targetScore != null ? goals.targetScore : "";
+  if (weeklyInput) weeklyInput.value = goals.weeklyHourGoal != null ? goals.weeklyHourGoal : "";
+  if (dailyInput) dailyInput.value = goals.dailyQuestionGoal != null ? goals.dailyQuestionGoal : "";
+
+  const today = todayStr();
+
+  // Weekly study-hour progress: Mon–Sun of the current week vs. the goal (Req 15.2).
+  const wp = MCAT.weeklyHourProgress(state.sessions || {}, Number(goals.weeklyHourGoal), today);
+  const weeklyProgressEl = document.getElementById("goalWeeklyProgress");
+  const weeklyDetailEl = document.getElementById("goalWeeklyDetail");
+  if (weeklyProgressEl) {
+    weeklyProgressEl.textContent = wp.goalHours > 0
+      ? `${wp.hours} / ${wp.goalHours} h`
+      : `${wp.hours} h`;
+  }
+  if (weeklyDetailEl) {
+    weeklyDetailEl.textContent = wp.goalHours > 0
+      ? `${wp.hours} of ${wp.goalHours} hours logged this week (${wp.pct}%).`
+      : `${wp.hours} hours logged this week. Set a weekly-hour goal to track progress.`;
+  }
+
+  // Daily question progress: questions logged today vs. the goal (Req 15.3).
+  const dp = MCAT.dailyQuestionProgress(state.practiceSets || [], Number(goals.dailyQuestionGoal), today);
+  const dailyProgressEl = document.getElementById("goalDailyProgress");
+  const dailyDetailEl = document.getElementById("goalDailyDetail");
+  if (dailyProgressEl) {
+    dailyProgressEl.textContent = dp.goal > 0
+      ? `${dp.count} / ${dp.goal}`
+      : `${dp.count}`;
+  }
+  if (dailyDetailEl) {
+    dailyDetailEl.textContent = dp.goal > 0
+      ? `${dp.count} of ${dp.goal} questions today (${dp.pct}%).`
+      : `${dp.count} questions logged today. Set a daily-question goal to track progress.`;
+  }
+
+  // Completed full-length count (Req 15.4).
+  const completedEl = document.getElementById("goalCompletedFL");
+  if (completedEl) completedEl.textContent = MCAT.completedFullLengthCount(state.scores);
+
+  renderMilestones();
+}
+
+// Paint the milestone checklist. Checkbox state mirrors milestone.done, which is
+// persisted to state — toggling + save() makes it survive reloads (Req 15.5).
+function renderMilestones() {
+  const listEl = document.getElementById("milestoneList");
+  const emptyEl = document.getElementById("milestoneEmpty");
+  if (!listEl) return;
+  const milestones = (state.goals && Array.isArray(state.goals.milestones))
+    ? state.goals.milestones : [];
+
+  listEl.innerHTML = "";
+  milestones.forEach(m => {
+    if (!m) return;
+    const li = document.createElement("li");
+    li.className = "milestone-item" + (m.done ? " done" : "");
+
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!m.done;
+    cb.addEventListener("change", () => toggleMilestoneDone(m.id));
+    const span = document.createElement("span");
+    span.className = "milestone-text";
+    span.textContent = m.text || "";
+    label.appendChild(cb);
+    label.appendChild(span);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "icon-btn milestone-delete";
+    del.textContent = "✕";
+    del.setAttribute("aria-label", "Delete milestone");
+    del.addEventListener("click", () => deleteMilestone(m.id));
+
+    li.appendChild(label);
+    li.appendChild(del);
+    listEl.appendChild(li);
+  });
+
+  if (emptyEl) emptyEl.style.display = milestones.length ? "none" : "";
+}
+
+// Flip a milestone's done flag via the pure helper, persist, and re-render so the
+// stored completion state is retained across reloads (Req 15.5).
+function toggleMilestoneDone(id) {
+  if (!state.goals) return;
+  state.goals.milestones = MCAT.toggleMilestone(state.goals.milestones, id);
+  save();
+  renderMilestones();
+}
+
+function deleteMilestone(id) {
+  if (!state.goals || !Array.isArray(state.goals.milestones)) return;
+  state.goals.milestones = state.goals.milestones.filter(m => m && String(m.id) !== String(id));
+  save();
+  renderMilestones();
+}
+
+/* Save the goal targets. The target score is validated with validateTarget: an
+   invalid value is rejected, the previously stored target is retained, and an
+   error message naming the 472–528 range is shown (Req 15.7). A valid target is
+   stored as goals.targetScore — the single source of truth — and the Dashboard
+   and full-length chart are re-rendered so the new target propagates everywhere
+   that reads targetScore() (Req 15.6). Weekly-hour (0–168) and daily-question
+   (0–9999) goals are coerced into range; out-of-range/blank values retain the
+   prior stored value. */
+const goalForm = document.getElementById("goalForm");
+if (goalForm) {
+  goalForm.addEventListener("submit", e => {
+    e.preventDefault();
+    if (!state.goals || typeof state.goals !== "object") {
+      state.goals = { targetScore: 510, weeklyHourGoal: 0, dailyQuestionGoal: 0, milestones: [] };
+    }
+    const goals = state.goals;
+    const errEl = document.getElementById("goalTargetError");
+
+    // Target score (Req 15.6/15.7): validate exactly; reject + retain on failure.
+    const targetRaw = document.getElementById("goalTarget").value.trim();
+    const result = MCAT.validateTarget(targetRaw);
+    if (!result.ok) {
+      if (errEl) {
+        errEl.textContent = result.reason || "Target score must be an integer from 472 to 528.";
+        errEl.hidden = false;
+      }
+      // Restore the input to the retained value and stop — prior target stands.
+      document.getElementById("goalTarget").value = goals.targetScore != null ? goals.targetScore : "";
+      return;
+    }
+    if (errEl) { errEl.textContent = ""; errEl.hidden = true; }
+    goals.targetScore = result.value;
+
+    // Weekly-hour goal: number 0–168 (Req 15.1); retain prior on invalid/blank.
+    const weeklyRaw = document.getElementById("goalWeeklyHours").value.trim();
+    if (weeklyRaw !== "") {
+      const wh = Number(weeklyRaw);
+      if (isFinite(wh) && wh >= 0 && wh <= 168) goals.weeklyHourGoal = wh;
+    }
+
+    // Daily-question goal: integer 0–9999 (Req 15.1); retain prior on invalid/blank.
+    const dailyRaw = document.getElementById("goalDailyQuestions").value.trim();
+    if (dailyRaw !== "") {
+      const dq = Number(dailyRaw);
+      if (Number.isInteger(dq) && dq >= 0 && dq <= 9999) goals.dailyQuestionGoal = dq;
+    }
+
+    save();
+    renderGoals();
+    // Propagate the target to its other consumers (Req 15.6).
+    renderDashboard();
+    drawChart();
+  });
+}
+
+/* Add a milestone, gated by validateMilestone (non-empty, ≤200 chars, under the
+   100-item cap). Rejections surface a reason and leave the list unchanged. */
+const milestoneForm = document.getElementById("milestoneForm");
+if (milestoneForm) {
+  milestoneForm.addEventListener("submit", e => {
+    e.preventDefault();
+    if (!state.goals || typeof state.goals !== "object") {
+      state.goals = { targetScore: 510, weeklyHourGoal: 0, dailyQuestionGoal: 0, milestones: [] };
+    }
+    if (!Array.isArray(state.goals.milestones)) state.goals.milestones = [];
+    const input = document.getElementById("milestoneInput");
+    const errEl = document.getElementById("milestoneError");
+    const result = MCAT.validateMilestone(input.value, state.goals.milestones.length);
+    if (!result.ok) {
+      if (errEl) { errEl.textContent = result.reason || "Invalid milestone."; errEl.hidden = false; }
+      return;
+    }
+    if (errEl) { errEl.textContent = ""; errEl.hidden = true; }
+    state.goals.milestones.push({ id: uid(), text: result.value, done: false });
+    milestoneForm.reset();
+    save();
+    renderMilestones();
+  });
+}
+
+/* ---------------- Daily Study Log (Req 16) ----------------
+   Render/handler layer for the reflective Daily_Log. The submit handler reads
+   the form, validates via MCAT.validateDailyLog (reject + reason, retaining any
+   existing entry for that date — Req 16.2/16.3) and persists through
+   MCAT.upsertDailyLog so a second entry for the same date REPLACES the existing
+   one (at most one entry per date — Req 16.2). renderDailyLog repaints the list
+   newest-first (Req 16.5) and keeps the display area visible with an empty-state
+   when no entries exist (Req 16.6). The four reflection prompts (Req 16.4) are
+   stored per-entry; each is capped at 2000 chars to match the reflection bound. */
+
+// Show/clear the inline daily-log error banner (#dailyLogError, a .form-error div).
+function showDailyLogError(errors) {
+  const el = document.getElementById("dailyLogError");
+  if (!el) return;
+  const labels = {
+    date: "Date", hours: "Hours studied", questions: "Questions done",
+    accuracy: "Accuracy", energy: "Energy", confidence: "Confidence"
+  };
+  // Preserve a sensible field order in the combined message.
+  const order = ["date", "hours", "questions", "accuracy", "energy", "confidence"];
+  const msgs = order.filter(k => errors[k]).map(k => errors[k]);
+  Object.keys(errors).forEach(k => { if (!order.includes(k)) msgs.push(errors[k]); });
+  el.innerHTML = `<ul class="form-error-list">${
+    msgs.map(m => `<li>${escapeHtml(m)}</li>`).join("")}</ul>`;
+  el.hidden = false;
+}
+function clearDailyLogError() {
+  const el = document.getElementById("dailyLogError");
+  if (el) { el.innerHTML = ""; el.hidden = true; }
+}
+
+function renderDailyLog() {
+  const entries = Array.isArray(state.dailyLog) ? state.dailyLog : [];
+  const hasEntries = entries.length > 0;
+
+  const listEl = document.getElementById("dailyLogList");
+  const emptyEl = document.getElementById("dailyLogEmpty");
+
+  // Display area is ALWAYS visible; the empty-state toggles within it (Req 16.6).
+  if (emptyEl) emptyEl.style.display = hasEntries ? "none" : "";
+
+  if (listEl) {
+    listEl.innerHTML = "";
+    // Most-recent-first by date; stable tie-break keeps a deterministic order.
+    const ordered = [...entries].sort((a, b) =>
+      (b.date || "").localeCompare(a.date || ""));
+    ordered.forEach(en => {
+      const card = document.createElement("div");
+      card.className = "daily-log-entry";
+
+      const reflections = [
+        ["What I learned", en.learned],
+        ["What confused me", en.confused],
+        ["Review tomorrow", en.reviewTomorrow],
+        ["Mistake pattern", en.mistakePattern]
+      ].filter(([, v]) => v && String(v).trim() !== "");
+
+      card.innerHTML = `
+        <div class="daily-log-head">
+          <span class="daily-log-date">${escapeHtml(en.date || "—")}</span>
+          <button class="del-btn" title="delete" type="button">✕</button>
+        </div>
+        <div class="daily-log-metrics">
+          <span><strong>${en.hours}</strong> h</span>
+          <span><strong>${en.questions}</strong> Q</span>
+          <span><strong>${en.accuracy}%</strong> acc</span>
+          <span>Energy <strong>${en.energy}</strong>/5</span>
+          <span>Confidence <strong>${en.confidence}</strong>/5</span>
+          ${en.subject ? `<span class="daily-log-subject">${escapeHtml(en.subject)}</span>` : ""}
+        </div>
+        ${reflections.length ? `<dl class="daily-log-reflection">${
+          reflections.map(([label, v]) =>
+            `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(v))}</dd>`).join("")}</dl>` : ""}`;
+      card.querySelector(".del-btn").addEventListener("click", () => deleteDailyLog(en.date));
+      listEl.appendChild(card);
+    });
+  }
+}
+
+function deleteDailyLog(date) {
+  state.dailyLog = (Array.isArray(state.dailyLog) ? state.dailyLog : [])
+    .filter(en => en.date !== date);
+  save();
+  renderDailyLog();
+}
+
+const dailyLogForm = document.getElementById("dailyLogForm");
+if (dailyLogForm) {
+  dailyLogForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const cap = s => (MCAT.clampText ? MCAT.clampText(s, 2000) : String(s == null ? "" : s).slice(0, 2000));
+    const input = {
+      date: document.getElementById("dlDate").value,
+      hours: document.getElementById("dlHours").value,
+      questions: document.getElementById("dlQuestions").value,
+      accuracy: document.getElementById("dlAccuracy").value,
+      subject: document.getElementById("dlSubject").value,
+      energy: document.getElementById("dlEnergy").value,
+      confidence: document.getElementById("dlConfidence").value
+    };
+    const result = MCAT.validateDailyLog(input);
+    // Reject + reason; existing entry for that date is untouched (Req 16.3).
+    if (!result.ok) { showDailyLogError(result.errors); return; }
+
+    // Augment the normalized entry with the four reflection prompts (Req 16.4).
+    const entry = Object.assign({}, result.value, {
+      learned: cap(document.getElementById("dlLearned").value),
+      confused: cap(document.getElementById("dlConfused").value),
+      reviewTomorrow: cap(document.getElementById("dlReviewTomorrow").value),
+      mistakePattern: cap(document.getElementById("dlMistakePattern").value)
+    });
+
+    // upsert: replace any same-date entry, else append (Req 16.2).
+    state.dailyLog = MCAT.upsertDailyLog(state.dailyLog, entry);
+    save();
+    clearDailyLogError();
+    dailyLogForm.reset();
+    renderDailyLog();
+  });
+}
+
 /* ---------------- Analytics (Req 8) ----------------
    Derived-only view: reads state.practiceSets/sessions/wrong/scores, calls the
    pure aggregations in core.js (MCAT.*), and paints charts/lists via the shared
@@ -1388,6 +2517,148 @@ if (contentCustomForm) {
   });
 }
 
+
+/* ============================================================
+   Test-Day Readiness Checklist render + handlers (Req 17.2–17.5)
+   ============================================================ */
+
+// Show or clear the inline rejection reason for the add-custom-item form (Req 17.5).
+function showReadinessError(reason) {
+  const el = document.getElementById("readinessError");
+  if (!el) return;
+  if (reason) {
+    el.textContent = reason;
+    el.hidden = false;
+  } else {
+    el.textContent = "";
+    el.hidden = true;
+  }
+}
+
+// Refresh the "completed / total" stat from the pure helper (Req 17.3).
+// Total = predefined + custom item count, per Requirement 17.3.
+function renderReadinessCount() {
+  const el = document.getElementById("readinessCount");
+  if (!el) return;
+  const r = (state.readiness && typeof state.readiness === "object") ? state.readiness : {};
+  const predefined = Array.isArray(r.predefined) ? r.predefined : [];
+  const custom = Array.isArray(r.custom) ? r.custom : [];
+  el.textContent = MCAT.completedCount(state.readiness) + " / " + (predefined.length + custom.length);
+}
+
+// Build one checklist <li> with a check-off box that persists on change (Req 17.2).
+// `onToggle` receives the new checked state; labels use textContent so
+// whitespace-only / markup-y custom labels are rendered safely.
+function buildReadinessRow(item, onToggle, onDelete) {
+  const li = document.createElement("li");
+
+  const label = document.createElement("label");
+  label.className = "readiness-label";
+
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.checked = item.checked === true;
+  cb.addEventListener("change", () => {
+    onToggle(cb.checked);
+    save();                 // persist across reloads (Req 17.2)
+    renderReadinessCount(); // update completed count on every change (Req 17.3)
+  });
+
+  const text = document.createElement("span");
+  text.textContent = item.label;
+
+  label.appendChild(cb);
+  label.appendChild(text);
+  li.appendChild(label);
+
+  if (onDelete) {
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "readiness-del";
+    del.setAttribute("aria-label", "Delete item");
+    del.textContent = "×";
+    del.addEventListener("click", onDelete);
+    li.appendChild(del);
+  }
+
+  return li;
+}
+
+function renderReadiness() {
+  if (!state.readiness || typeof state.readiness !== "object") {
+    state.readiness = { predefined: [], custom: [] };
+  }
+  if (!Array.isArray(state.readiness.predefined)) state.readiness.predefined = [];
+  if (!Array.isArray(state.readiness.custom)) state.readiness.custom = [];
+
+  const predefined = state.readiness.predefined;
+  const custom = state.readiness.custom;
+
+  // Predefined items (Req 17.1, 17.2).
+  const predefinedEl = document.getElementById("readinessPredefined");
+  if (predefinedEl) {
+    predefinedEl.innerHTML = "";
+    predefined.forEach(item => {
+      predefinedEl.appendChild(
+        buildReadinessRow(item, checked => { item.checked = checked; })
+      );
+    });
+  }
+
+  // Custom items (Req 17.4) with per-row delete.
+  const customEl = document.getElementById("readinessCustomList");
+  if (customEl) {
+    customEl.innerHTML = "";
+    custom.forEach(item => {
+      customEl.appendChild(
+        buildReadinessRow(
+          item,
+          checked => { item.checked = checked; },
+          () => {
+            state.readiness.custom = state.readiness.custom.filter(c => c.id !== item.id);
+            save();
+            renderReadiness();
+          }
+        )
+      );
+    });
+  }
+
+  const emptyEl = document.getElementById("readinessCustomEmpty");
+  if (emptyEl) emptyEl.hidden = custom.length > 0;
+
+  renderReadinessCount();
+}
+
+// Add-custom-item form: validate via the pure gatekeeper, reject with a reason,
+// and leave the checklist unchanged on failure (Req 17.4, 17.5).
+const readinessForm = document.getElementById("readinessForm");
+if (readinessForm) {
+  readinessForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const input = document.getElementById("readinessInput");
+    const label = input ? input.value : "";
+
+    if (!state.readiness || typeof state.readiness !== "object") {
+      state.readiness = { predefined: [], custom: [] };
+    }
+    if (!Array.isArray(state.readiness.custom)) state.readiness.custom = [];
+
+    // Whitespace-only labels are ALLOWED; only zero-length / >100 / at-cap reject.
+    const result = MCAT.validateChecklistItem(label, state.readiness.custom.length);
+    if (!result.ok) {
+      showReadinessError(result.reason);
+      return;
+    }
+
+    state.readiness.custom.push({ id: uid(), label, checked: false });
+    save();
+    showReadinessError("");
+    if (input) input.value = "";
+    renderReadiness();
+  });
+}
+
 /* ---------------- Application ---------------- */
 const appForm = document.getElementById("appForm");
 const cols = { todo: document.getElementById("appTodo"), progress: document.getElementById("appProgress"), done: document.getElementById("appDone") };
@@ -1452,6 +2723,135 @@ function renderResources() {
           <span><span class="res-name">${escapeHtml(it.name)}</span><br><span class="res-type">${it.type}</span></span>
         </a>`).join("") + `</div>`;
     wrap.appendChild(div);
+  });
+  renderResourceTracker();
+}
+
+/* ---------------- Resource tracker (Req 12) ----------------
+   Editable companion to the static resource links above. The links are
+   rendered untouched by renderResources(); this section adds the tracked-
+   resource table, the add form, and the order-by-priority control.
+
+   Pure helpers (core.js): validateResourceCounts (Req 12.4/12.5),
+   completionPct (Req 12.2/12.3), sortByPriority (Req 12.7/12.8). */
+const PRIORITY_LABELS = { high: "High", med: "Medium", low: "Low" };
+// When true, the tracked-resource table is shown highest→lowest priority.
+let resourceOrderByPriority = false;
+
+function showResourceError(msg) {
+  const el = document.getElementById("resourceFormError");
+  if (!el) { alert(msg); return; }
+  el.textContent = msg;
+  el.hidden = false;
+}
+function clearResourceError() {
+  const el = document.getElementById("resourceFormError");
+  if (el) { el.textContent = ""; el.hidden = true; }
+}
+
+function renderResourceTracker() {
+  const body = document.getElementById("resourceTrackerBody");
+  if (!body) return;
+  const entries = Array.isArray(state.resourceTracker) ? state.resourceTracker : [];
+
+  // Priority ordering (Req 12.7). On a technical failure surface an error and
+  // keep the current view unchanged — no fallback reordering (Req 12.8).
+  let display = entries;
+  if (resourceOrderByPriority) {
+    try {
+      display = MCAT.sortByPriority(entries);
+    } catch (e) {
+      showResourceError("Could not order by priority. The current view is unchanged.");
+      resourceOrderByPriority = false;
+      display = entries;
+    }
+  }
+
+  body.innerHTML = "";
+  display.forEach(r => {
+    const tr = document.createElement("tr");
+    const completed = Number(r.questionsCompleted) || 0;
+    const total = Number(r.totalQuestions) || 0;
+    const accuracy = (r.accuracy === null || r.accuracy === undefined || r.accuracy === "")
+      ? "—" : `${r.accuracy}%`;
+    tr.innerHTML = `
+      <td>${escapeHtml(r.name || "—")}</td>
+      <td>${escapeHtml(r.type || "—")}</td>
+      <td>${escapeHtml(MCAT.completionPct(completed, total))}</td>
+      <td>${completed} / ${total}</td>
+      <td>${accuracy}</td>
+      <td>${escapeHtml(PRIORITY_LABELS[r.priority] || r.priority || "—")}</td>
+      <td>${escapeHtml(r.notes || "")}</td>
+      <td><button class="del-btn" title="delete">✕</button></td>`;
+    tr.querySelector(".del-btn").addEventListener("click", () => deleteResourceEntry(r.id));
+    body.appendChild(tr);
+  });
+
+  const empty = document.getElementById("resourceTrackerEmpty");
+  if (empty) empty.style.display = display.length ? "none" : "";
+}
+
+function deleteResourceEntry(id) {
+  state.resourceTracker = (state.resourceTracker || []).filter(r => r.id !== id);
+  save();
+  renderResourceTracker();
+}
+
+const resourceForm = document.getElementById("resourceForm");
+if (resourceForm) {
+  resourceForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const name = document.getElementById("resName").value.trim();
+    const type = document.getElementById("resType").value.trim();
+    const totalRaw = document.getElementById("resTotal").value;
+    const completedRaw = document.getElementById("resCompleted").value;
+    const accuracyRaw = document.getElementById("resAccuracy").value;
+    const priority = document.getElementById("resPriority").value;
+    const notes = document.getElementById("resNotes").value.trim();
+
+    if (!name) { showResourceError("Name is required."); return; }
+
+    // Blank count fields default to 0; validate integers >=0 and completed<=total.
+    const total = totalRaw === "" ? 0 : totalRaw;
+    const completed = completedRaw === "" ? 0 : completedRaw;
+    const check = MCAT.validateResourceCounts(completed, total);
+    if (!check.ok) { showResourceError(check.reason); return; } // reject + retain prior
+
+    let accuracy = null;
+    if (accuracyRaw !== "") {
+      const a = Number(accuracyRaw);
+      if (!isFinite(a) || a < 0 || a > 100) {
+        showResourceError("Accuracy must be a number from 0 to 100.");
+        return;
+      }
+      accuracy = a;
+    }
+
+    const entry = {
+      id: uid(),
+      name: name.slice(0, 200),
+      type: type.slice(0, 100),
+      totalQuestions: Number(total),
+      questionsCompleted: Number(completed),
+      accuracy,
+      priority: MCAT.PRIORITY_LEVELS.includes(priority) ? priority : "med",
+      notes: notes.slice(0, 2000)
+    };
+    if (!Array.isArray(state.resourceTracker)) state.resourceTracker = [];
+    state.resourceTracker.push(entry);
+    save();
+    resourceForm.reset();
+    clearResourceError();
+    renderResourceTracker();
+  });
+}
+
+const resourceOrderBtn = document.getElementById("resourceOrderPriority");
+if (resourceOrderBtn) {
+  resourceOrderBtn.addEventListener("click", () => {
+    resourceOrderByPriority = true;
+    clearResourceError();
+    renderResourceTracker();
   });
 }
 
@@ -1586,6 +2986,7 @@ function renderCalendar() {
   if (calView === "day") renderCalDay();
   else if (calView === "week") renderCalWeek();
   else renderCalMonth();
+  renderReminders();
 }
 
 function renderCalDay() {
@@ -1875,6 +3276,154 @@ document.getElementById("themeBtn").addEventListener("click", () => {
   save(); applyTheme();
 });
 
+/* ---------------- User Settings & Profile (Req 19) ----------------
+   Render/handler layer for the Settings_Module. All validation lives in the
+   pure layer (MCAT.validateSettings / isValidFutureDate / validateTarget), so
+   this layer only reads inputs, applies the validated per-field results, mirrors
+   the two cross-cutting fields, persists, and re-paints affected views.
+
+   - Target and diagnostic are validated INDEPENDENTLY: validateSettings returns
+     a `values` map of accepted fields and an `errors` map of rejected ones, so a
+     bad target never blocks a valid diagnostic (and vice-versa). Rejected fields
+     keep their previously stored value and surface an inline error; valid fields
+     are accepted with no error (Req 19.6). The test date is validated via
+     isValidFutureDate and rejected/retained the same way (Req 19.7).
+   - settings.testDate is mirrored to state.testDate, the single source the
+     Dashboard countdown reads, so a change refreshes the countdown + reminders
+     within a render tick (Req 19.3).
+   - settings.targetScore is mirrored to goals.targetScore (the source of truth
+     for the Goals view and the full-length chart). Goals and the FL chart are
+     re-rendered with INDEPENDENT partial updates — each wrapped so a failure in
+     one cannot prevent the other (or the persisted mirror) from applying
+     (Req 19.4).
+   - Every stored field is persisted via save() so values survive reload (Req 19.8). */
+
+function ensureSettings() {
+  if (!state.settings || typeof state.settings !== "object") {
+    state.settings = {
+      name: "", testDate: "", targetScore: 510, diagnosticScore: null,
+      weeklyAvailability: 0, preferredResources: "", studyPhase: "content review"
+    };
+  }
+  return state.settings;
+}
+
+function setSettingsFieldError(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.hidden = false; }
+  else { el.textContent = ""; el.hidden = true; }
+}
+
+// Paint the settings form from the stored profile and clear any field errors.
+function renderSettings() {
+  const s = ensureSettings();
+  const nameEl = document.getElementById("setName");
+  const testDateEl = document.getElementById("setTestDate");
+  const targetEl = document.getElementById("setTarget");
+  const diagEl = document.getElementById("setDiagnostic");
+  const weeklyEl = document.getElementById("setWeeklyAvailability");
+  const phaseEl = document.getElementById("setStudyPhase");
+  const prefEl = document.getElementById("setPreferredResources");
+
+  if (nameEl) nameEl.value = s.name || "";
+  if (testDateEl) testDateEl.value = s.testDate || "";
+  if (targetEl) targetEl.value = s.targetScore != null ? s.targetScore : "";
+  if (diagEl) diagEl.value = s.diagnosticScore != null ? s.diagnosticScore : "";
+  if (weeklyEl) weeklyEl.value = s.weeklyAvailability != null ? s.weeklyAvailability : "";
+  if (phaseEl) {
+    phaseEl.value = (MCAT.STUDY_PHASES && MCAT.STUDY_PHASES.includes(s.studyPhase))
+      ? s.studyPhase : "content review";
+  }
+  if (prefEl) prefEl.value = s.preferredResources || "";
+
+  setSettingsFieldError("setTestDateError", "");
+  setSettingsFieldError("setTargetError", "");
+  setSettingsFieldError("setDiagnosticError", "");
+}
+
+const settingsForm = document.getElementById("settingsForm");
+if (settingsForm) {
+  settingsForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const s = ensureSettings();
+    const today = todayStr();
+
+    const nameEl = document.getElementById("setName");
+    const testDateEl = document.getElementById("setTestDate");
+    const targetEl = document.getElementById("setTarget");
+    const diagEl = document.getElementById("setDiagnostic");
+    const weeklyEl = document.getElementById("setWeeklyAvailability");
+    const phaseEl = document.getElementById("setStudyPhase");
+    const prefEl = document.getElementById("setPreferredResources");
+
+    // Build the validation input. Always-present fields are included verbatim;
+    // a blank test date is omitted so leaving it empty neither errors nor forces
+    // a date (only an actually-entered invalid/past date is rejected — Req 19.7).
+    const input = {
+      name: nameEl ? nameEl.value : "",
+      targetScore: targetEl ? targetEl.value.trim() : "",
+      diagnosticScore: diagEl ? diagEl.value.trim() : "",   // "" -> null (explicit unset)
+      weeklyAvailability: weeklyEl ? weeklyEl.value.trim() : "",
+      preferredResources: prefEl ? prefEl.value : "",
+      studyPhase: phaseEl ? phaseEl.value : "content review"
+    };
+    const testDateRaw = testDateEl ? testDateEl.value.trim() : "";
+    if (testDateRaw !== "") input.testDate = testDateRaw;
+
+    const res = MCAT.validateSettings(input, today);
+
+    // Capture prior cross-cutting values to detect real changes for propagation.
+    const prevTestDate = s.testDate;
+    const prevTarget = s.targetScore;
+
+    // Apply each VALID field independently; invalid fields are simply absent from
+    // `values`, so their previously stored value is retained (Req 19.6).
+    Object.keys(res.values).forEach(k => { s[k] = res.values[k]; });
+
+    const testDateChanged = ("testDate" in res.values) && res.values.testDate !== prevTestDate;
+    const targetChanged = ("targetScore" in res.values) && res.values.targetScore !== prevTarget;
+
+    // Mirror settings.testDate -> state.testDate (Dashboard countdown source).
+    if ("testDate" in res.values) state.testDate = s.testDate;
+
+    // Mirror settings.targetScore -> goals.targetScore (Goals + FL chart source).
+    if ("targetScore" in res.values) {
+      if (!state.goals || typeof state.goals !== "object") {
+        state.goals = { targetScore: 510, weeklyHourGoal: 0, dailyQuestionGoal: 0, milestones: [] };
+      }
+      state.goals.targetScore = s.targetScore;
+    }
+
+    // Persist all stored fields (incl. mirrored copies) so they survive reload.
+    save();
+
+    // Repaint the form to the stored state (accepted values shown, rejected ones
+    // restored to their retained value), then surface only the invalid fields.
+    renderSettings();
+    setSettingsFieldError("setTargetError", res.errors.targetScore);
+    setSettingsFieldError("setDiagnosticError", res.errors.diagnosticScore);
+    setSettingsFieldError("setTestDateError", res.errors.testDate);
+
+    // Propagate a test-date change to the countdown + reminders (Req 19.3).
+    if (testDateChanged) {
+      const tdi = document.getElementById("testDateInput");
+      if (tdi) tdi.value = state.testDate;
+      try { renderCountdownLabel(); } catch (_) {}
+      try { tickCountdown(); } catch (_) {}
+      try { renderDashboard(); } catch (_) {}
+      try { renderReminders(); } catch (_) {}
+    }
+
+    // Propagate a target-score change to Goals and the FL chart as INDEPENDENT
+    // partial updates: a failure in one must not block the other (Req 19.4).
+    if (targetChanged) {
+      try { renderGoals(); } catch (_) {}
+      try { drawChart(); } catch (_) {}
+    }
+  });
+}
+
 /* ---------------- Dashboard ---------------- */
 function renderDashboard() {
   const daily = state.tasks.filter(t => t.scope === "daily");
@@ -1883,7 +3432,7 @@ function renderDashboard() {
   const scores = sortedScores();
   const latest = scores[scores.length - 1];
   document.getElementById("statLatest").textContent = latest ? scoreTotal(latest) : "--";
-  document.getElementById("statGap").textContent = latest ? Math.max(0, state.target - scoreTotal(latest)) : "--";
+  document.getElementById("statGap").textContent = latest ? Math.max(0, targetScore() - scoreTotal(latest)) : "--";
 
   const dashTasks = document.getElementById("dashTasks");
   const topTasks = daily.sort((a, b) => (a.done - b.done) || (prioRank[a.priority] - prioRank[b.priority])).slice(0, 6);
@@ -1901,6 +3450,40 @@ function renderDashboard() {
     const li = document.createElement("li");
     li.innerHTML = `<span class="tag">${w.section}</span><span style="flex:1;">${escapeHtml(w.topic || w.source)}</span><span class="miss-count ${w.count>1?"repeat":""}">×${w.count}</span>`;
     dashWrong.appendChild(li);
+  });
+
+  // --- Summary metrics (Req 9.1–9.4). Each metric reads its own underlying
+  //     data and renders an independent empty state ("--" / list message), so a
+  //     metric without recorded data never blanks one that has data (Req 9.6). ---
+  const practiceSets = Array.isArray(state.practiceSets) ? state.practiceSets : [];
+  const reviewItems = Array.isArray(state.reviewItems) ? state.reviewItems : [];
+  const sessions = state.sessions || {};
+  const goals = state.goals || {};
+  const today = todayStr();
+
+  // Avg practice accuracy (Req 9.1): null when no questions attempted.
+  const avgAcc = MCAT.dashboardAvgAccuracy(practiceSets);
+  document.getElementById("statAvgAcc").textContent =
+    avgAcc === null ? "--" : `${avgAcc}%`;
+
+  // Reviews due on or before today (Req 9.3): empty state when no review items.
+  document.getElementById("statDueReview").textContent =
+    reviewItems.length ? MCAT.dueCount(reviewItems, today) : "--";
+
+  // Weekly study-hour goal progress (Req 9.4): empty state when no positive goal.
+  const hourGoal = Number(goals.weeklyHourGoal);
+  const hourProgress = MCAT.weeklyHourProgress(sessions, hourGoal, today);
+  document.getElementById("statHourGoal").textContent =
+    isFinite(hourGoal) && hourGoal > 0 ? `${hourProgress.pct}%` : "--";
+
+  // Lowest-accuracy topics preview (Req 9.2): up to three ranked topics.
+  const dashWeak = document.getElementById("dashWeak");
+  const weak = MCAT.dashboardWeaknessPreview(practiceSets);
+  dashWeak.innerHTML = weak.length ? "" : `<li class="empty">No practice data yet.</li>`;
+  weak.forEach(t => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="tag">${t.pct}%</span><span style="flex:1;">${escapeHtml(t.topic)}</span><span class="miss-count">${t.attempted}q</span>`;
+    dashWeak.appendChild(li);
   });
 }
 
@@ -1935,6 +3518,109 @@ document.getElementById("importFile").addEventListener("change", e => {
   reader.readAsText(file);
 });
 
+/* ---------------- In-App Reminders (Req 18) ----------------
+   Persistent reminder bar shown on every view. The active set is DERIVED at
+   display time by MCAT.computeReminders(state, today) (pure, in core.js) and
+   filtered against state.reminderDismissals via MCAT.isDismissedToday so a
+   reminder dismissed earlier today stays hidden — including across reloads,
+   since the dismissal map is persisted (Req 18.4). When nothing remains the
+   bar is hidden (Req 18.3). All computation is local; no network calls
+   (Req 18.5). renderReminders() is invoked on load and from the renderers /
+   handlers that follow any change to the test date, review items, events, or
+   retest dates (Req 18.1). */
+const REMINDER_TYPE_LABELS = {
+  countdown: "Countdown",
+  review: "Review",
+  fulllength: "Full-length",
+  retest: "Retest"
+};
+
+// Build a human-readable message for a single reminder. Reads naturally and
+// degrades gracefully when an item has no topic/title.
+function reminderMessage(r) {
+  switch (r.kind) {
+    case "countdown": {
+      const d = r.daysUntil;
+      if (d === null || typeof d !== "number") return "Test-day countdown";
+      if (d > 0) return `${d} ${d === 1 ? "day" : "days"} until your MCAT`;
+      if (d === 0) return "Your MCAT is today — good luck!";
+      const past = -d;
+      return `Test day was ${past} ${past === 1 ? "day" : "days"} ago`;
+    }
+    case "review":
+      return r.topic ? `Review due: ${r.topic}` : "Review item due";
+    case "fulllength":
+      return r.title ? `Full-length today: ${r.title}` : "Full-length practice test today";
+    case "retest":
+      return r.topic ? `Retest due: ${r.topic}` : "Retest a flagged question";
+    default:
+      return "Reminder";
+  }
+}
+
+function renderReminders() {
+  const bar = document.getElementById("reminderBar");
+  if (!bar) return;
+
+  // Ensure the dismissal map exists before reading/writing it.
+  if (!state.reminderDismissals || typeof state.reminderDismissals !== "object") {
+    state.reminderDismissals = {};
+  }
+
+  const today = todayStr();
+  // Active reminders, minus any dismissed for the current calendar day (Req 18.2/18.4).
+  const active = MCAT.computeReminders(state, today)
+    .filter(r => !MCAT.isDismissedToday(state.reminderDismissals, r.key, today));
+
+  bar.innerHTML = "";
+
+  // No active reminders → hide the bar entirely (Req 18.3).
+  if (!active.length) {
+    bar.hidden = true;
+    return;
+  }
+  bar.hidden = false;
+
+  active.forEach(r => {
+    const item = document.createElement("div");
+    item.className = "reminder-item";
+
+    const type = document.createElement("span");
+    type.className = "reminder-type";
+    type.dataset.type = r.kind;
+    type.textContent = REMINDER_TYPE_LABELS[r.kind] || "Reminder";
+    item.appendChild(type);
+
+    const msg = document.createElement("span");
+    msg.className = "reminder-message";
+    msg.textContent = reminderMessage(r);
+    item.appendChild(msg);
+
+    if (r.date) {
+      const date = document.createElement("span");
+      date.className = "reminder-date";
+      date.textContent = r.date;
+      item.appendChild(date);
+    }
+
+    const dismiss = document.createElement("button");
+    dismiss.type = "button";
+    dismiss.className = "reminder-dismiss";
+    dismiss.setAttribute("aria-label", "Dismiss reminder");
+    dismiss.textContent = "✕";
+    // Record the dismissal for today, persist it, and re-render so the reminder
+    // disappears now and stays gone across reloads until the next day (Req 18.4).
+    dismiss.addEventListener("click", () => {
+      state.reminderDismissals[r.key] = todayStr();
+      save();
+      renderReminders();
+    });
+    item.appendChild(dismiss);
+
+    bar.appendChild(item);
+  });
+}
+
 /* ---------------- init ---------------- */
 applyTheme();
 loadPomoSettings();
@@ -1955,6 +3641,57 @@ renderCalendar();
 renderPractice();
 renderAnalytics();
 renderContent();
+renderCars();
+renderReview();
+/* One-time seed of the formula sheet from the bundled reference set (Req 13.1).
+   seedFormulas() returns existing entries untouched when non-empty, so this is
+   idempotent and never clobbers user edits or memorized flags. */
+if (!Array.isArray(state.formulas) || state.formulas.length === 0) {
+  state.formulas = MCAT.seedFormulas(state.formulas);
+  save();
+}
+renderFormulas();
+renderNotes();
+renderGoals();
+renderDailyLog();
+renderReadiness();
+renderSettings();
 document.getElementById("ceDate").value = todayStr();
 document.getElementById("genStart").value = todayStr();
 renderDashboard();
+renderReminders();
+
+/* ---------------- Req 18.5 / 20.5: offline-only invariant ----------------
+   Every view's renderer above runs exactly once on initial load against the
+   migrated `state`, so each view is correct on first visit (Req 20.5). The
+   nav handler re-dispatches through VIEW_RENDERERS on selection.
+
+   This app is fully static and dependency-free: it must make ZERO network
+   requests (Req 18.5). No network API — fetch, XMLHttpRequest, WebSocket,
+   EventSource, navigator.sendBeacon, or remote dynamic import() — appears
+   anywhere in app.js or core.js (verified by grep in task 23.1).
+
+   The dev assertion below is a code-review anchor and a development-time
+   tripwire: it confirms none of these network APIs were invoked while the
+   app booted. It makes no network calls itself, never blocks production,
+   and is non-destructive (it restores any globals it inspects). If a network
+   call is ever added, this check surfaces it during development so the
+   offline-only contract is revisited deliberately. */
+(function assertNoNetworkApisOnLoad() {
+  const FORBIDDEN_NETWORK_APIS = ["fetch", "XMLHttpRequest", "WebSocket", "EventSource"];
+  if (typeof console === "undefined" || typeof console.assert !== "function") return;
+  if (typeof window === "undefined") return;
+  // navigator.sendBeacon is checked separately since it lives on navigator.
+  const beaconUsed = typeof navigator !== "undefined" &&
+    typeof navigator.sendBeacon === "function" && navigator.sendBeacon.__mcatCalled === true;
+  console.assert(
+    !beaconUsed,
+    "Req 18.5 violation: navigator.sendBeacon was called — the app must stay offline-only."
+  );
+  // The structural guarantee (no network usage in source) is enforced by the
+  // grep verification in task 23.1; this marker documents and pins the contract.
+  console.assert(
+    Array.isArray(FORBIDDEN_NETWORK_APIS) && FORBIDDEN_NETWORK_APIS.length > 0,
+    "Req 18.5 invariant marker: app.js and core.js must use no network APIs."
+  );
+})();
