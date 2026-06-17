@@ -30,6 +30,8 @@
         <button class="nav-btn" data-view="review"><span class="nav-ico">↻</span> Review</button>
         <button class="nav-btn" data-view="application"><span class="nav-ico">✎</span> Application</button>
         <button class="nav-btn" data-view="resources"><span class="nav-ico">▣</span> Resources</button>
+        <button class="nav-btn" data-view="formulas"><span class="nav-ico">∑</span> Formulas</button>
+        <button class="nav-btn" data-view="notes"><span class="nav-ico">✑</span> Notes</button>
       </nav>
 
       <div class="streak-box">
@@ -85,6 +87,9 @@
           <div class="stat-card"><div class="stat-num" id="statWeekHrs">0.0</div><div class="stat-label">Hours this week</div></div>
           <div class="stat-card"><div class="stat-num" id="statLatest">--</div><div class="stat-label">Latest full-length</div></div>
           <div class="stat-card"><div class="stat-num" id="statGap">--</div><div class="stat-label">Points to target</div></div>
+          <div class="stat-card"><div class="stat-num" id="statAvgAcc">--</div><div class="stat-label">Avg practice accuracy</div></div>
+          <div class="stat-card"><div class="stat-num" id="statDueReview">--</div><div class="stat-label">Reviews due today</div></div>
+          <div class="stat-card"><div class="stat-num" id="statHourGoal">--</div><div class="stat-label">Weekly-hour goal</div></div>
         </div>
 
         <div class="panel">
@@ -114,6 +119,13 @@
           <div class="panel">
             <div class="panel-head"><h2>Repeat misses</h2><span class="muted small">unresolved</span></div>
             <ul class="mini-topics" id="dashWrong"><li class="empty">No flagged misses.</li></ul>
+          </div>
+        </div>
+
+        <div class="dash-row">
+          <div class="panel">
+            <div class="panel-head"><h2>Lowest-accuracy topics</h2><span class="muted small">focus next</span></div>
+            <ul class="mini-topics" id="dashWeak"><li class="empty">No practice data yet.</li></ul>
           </div>
         </div>
       </section>
@@ -628,6 +640,95 @@
         </div>
       </section>
 
+      <!-- FORMULAS -->
+      <section class="view" id="view-formulas">
+        <header class="view-head">
+          <h1>Formulas</h1>
+          <p class="muted">Searchable equation sheet. Mark formulas as memorized and self-test with practice recall.</p>
+        </header>
+
+        <form class="formula-tools" id="formulaSearchForm" autocomplete="off" onsubmit="return false">
+          <div class="score-field grow"><label>Search</label><input type="search" id="formulaSearch" placeholder="Search name, expression, or tag…" maxlength="100" /></div>
+        </form>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Filter by tag</h2><span class="muted small">select one or more</span></div>
+          <div class="tag-chips" id="formulaTags"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Formulas</h2><span class="muted small">toggle memorized · practice recall</span></div>
+          <div class="formula-list" id="formulaList"></div>
+          <div class="empty-state" id="formulaEmpty">No formulas match your search.</div>
+        </div>
+
+        <!-- Per-entry markup pattern used by renderFormulas: memorized toggle + practice-recall reveal control -->
+        <template id="formulaEntryTemplate">
+          <div class="formula-entry">
+            <div class="formula-main">
+              <div class="formula-name"></div>
+              <div class="formula-expression"></div>
+              <div class="formula-tags"></div>
+            </div>
+            <div class="formula-controls">
+              <label class="formula-memorized"><input type="checkbox" class="formula-memorized-toggle" /> Memorized</label>
+              <button type="button" class="ghost-btn formula-recall-toggle">Practice recall</button>
+              <button type="button" class="ghost-btn formula-reveal" hidden>Reveal</button>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <!-- NOTES -->
+      <section class="view" id="view-notes">
+        <header class="view-head">
+          <h1>Notes</h1>
+          <p class="muted">Searchable, tagged study notes with Markdown. Link them to missed questions.</p>
+        </header>
+
+        <form class="note-form" id="noteForm" autocomplete="off">
+          <div class="score-field grow"><label>Title</label><input type="text" id="noteTitle" placeholder="Note title…" maxlength="200" /></div>
+          <div class="score-field grow"><label>Tags</label><input type="text" id="noteTags" placeholder="Comma-separated tags…" maxlength="500" /></div>
+          <div class="score-field check"><label><input type="checkbox" id="noteNeedsReview" /> Needs review</label></div>
+          <div class="score-field full"><label>Body (Markdown)</label><textarea id="noteBody" maxlength="50000" rows="6" placeholder="# Heading, **bold**, *italic*, - lists, [links](url), `code`…"></textarea></div>
+          <button type="submit" class="btn">Save note</button>
+        </form>
+
+        <form class="formula-tools" id="noteSearchForm" autocomplete="off" onsubmit="return false">
+          <div class="score-field grow"><label>Search</label><input type="search" id="noteSearch" placeholder="Search title, body, or tag…" maxlength="100" /></div>
+        </form>
+
+        <div class="note-layout">
+          <div class="panel">
+            <div class="panel-head"><h2>Notes</h2><span class="muted small">most recent first</span></div>
+            <div class="note-list" id="noteList"></div>
+            <div class="empty-state" id="noteEmpty">No notes match your search.</div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h2>Preview</h2><span class="muted small">rendered Markdown</span></div>
+            <div class="note-preview markdown-body" id="notePreview"></div>
+            <div class="empty-state" id="notePreviewEmpty">Select a note to preview it.</div>
+          </div>
+        </div>
+
+        <!-- Per-entry markup pattern used by renderNotes: title, tags, needs-review toggle, linked errors, actions -->
+        <template id="noteEntryTemplate">
+          <div class="note-entry">
+            <div class="note-main">
+              <div class="note-title"></div>
+              <div class="note-tags"></div>
+              <div class="note-linked"></div>
+            </div>
+            <div class="note-controls">
+              <label class="note-needs-review"><input type="checkbox" class="note-needs-review-toggle" /> Needs review</label>
+              <button type="button" class="ghost-btn note-preview-btn">Preview</button>
+              <button type="button" class="ghost-btn note-delete">Delete</button>
+            </div>
+          </div>
+        </template>
+      </section>
+
       <!-- APPLICATION -->
       <section class="view" id="view-application">
         <header class="view-head">
@@ -653,6 +754,43 @@
           <p class="muted">Your tip sheets and decks. Click one to open it.</p>
         </header>
         <div id="resourceGroups"></div>
+
+        <!-- Editable resource tracker (Req 12.1, 12.6) -->
+        <header class="view-head resource-tracker-head">
+          <h2>Resource tracker</h2>
+          <p class="muted">Log question banks and books, track completion, and prioritize what's left.</p>
+        </header>
+
+        <form class="cars-form" id="resourceForm">
+          <div class="score-field grow"><label>Name</label><input type="text" id="resName" placeholder="UWorld / AAMC FL bank…" maxlength="200" autocomplete="off" /></div>
+          <div class="score-field"><label>Type</label><input type="text" id="resType" placeholder="Qbank, book, deck…" maxlength="100" autocomplete="off" /></div>
+          <div class="score-field small"><label>Total Qs</label><input type="number" id="resTotal" min="0" max="999999" step="1" placeholder="0–999999" /></div>
+          <div class="score-field small"><label>Completed</label><input type="number" id="resCompleted" min="0" max="999999" step="1" placeholder="0–999999" /></div>
+          <div class="score-field small"><label>Accuracy %</label><input type="number" id="resAccuracy" min="0" max="100" step="0.1" placeholder="0–100" /></div>
+          <div class="score-field small"><label>Priority</label>
+            <select id="resPriority">
+              <option value="high">High</option>
+              <option value="med">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="score-field grow"><label>Notes</label><input type="text" id="resNotes" placeholder="Optional notes…" maxlength="2000" /></div>
+          <button type="submit" class="btn">Add</button>
+        </form>
+
+        <div class="empty-state" id="resourceFormError" hidden></div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Tracked resources</h2>
+            <button type="button" class="btn ghost small" id="resourceOrderPriority">Order by priority</button>
+          </div>
+          <table class="resource-table">
+            <thead><tr><th>Name</th><th>Type</th><th>Completion</th><th>Completed / Total</th><th>Accuracy</th><th>Priority</th><th>Notes</th><th></th></tr></thead>
+            <tbody id="resourceTrackerBody"></tbody>
+          </table>
+          <div class="empty-state" id="resourceTrackerEmpty">No tracked resources yet.</div>
+        </div>
       </section>
 
     </main>

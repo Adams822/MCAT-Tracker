@@ -1,10 +1,8 @@
-# OS
+# OS junk
 .DS_Store
 
-# Dev dependencies (tests are dev-only; the shipped app is dependency-free)
-node_modules/
+# Dev-only test harness dependencies (never shipped with the app)
 tests/node_modules/
 
-# Logs
-*.log
-npm-debug.log*
+# Editor
+.vscode/

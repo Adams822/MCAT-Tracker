@@ -90,7 +90,7 @@ Task conventions:
     - **Property 35: Markdown rendering is XSS-safe** — **Validates: Requirements 14.8**
     - **Property 36: Target-score validation is exact** — **Validates: Requirements 15.7, 19.6**
 
-- [ ] 4. Checkpoint — foundation
+- [x] 4. Checkpoint — foundation
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 5. Practice Question Tracker and accuracy graphs (Req 3, 4)
@@ -182,26 +182,26 @@ Task conventions:
   - [ ]* 9.6 [DOM] Smoke test: subject tree renders the four sections and groupings
     - _Requirements: 5.1_
 
-- [ ] 10. Dashboard enhancements (Req 9)
-  - [ ] 10.1 [PURE] Implement dashboard preview and goal-progress helpers
+- [x] 10. Dashboard enhancements (Req 9)
+  - [x] 10.1 [PURE] Implement dashboard preview and goal-progress helpers
     - Dashboard lowest-accuracy preview = first `min(3, distinct topics)` of `weaknessRanking`; `weeklyHourProgress(sessions, goalHours, today)` and `dailyQuestionProgress(practiceSets, goalQ, today)`; reuse `dueCount` (from task 13.1) for due review count
     - _Requirements: 9.1, 9.2, 9.4_
   - [ ]* 10.2 [PURE] Property tests: weakness preview and goal progress
     - **Property 21: Dashboard weakness preview is a bounded prefix of the ranking** — **Validates: Requirements 9.2**
     - **Property 22: Goal progress percentages are correct** — **Validates: Requirements 9.4, 15.2, 15.3**
-  - [ ] 10.3 [DOM] Add new dashboard metric cards to the dashboard view markup
+  - [x] 10.3 [DOM] Add new dashboard metric cards to the dashboard view markup
     - Add cards for average practice accuracy, three lowest-accuracy topics, due review count, and weekly-hour goal progress
     - _Requirements: 9.1, 9.2, 9.3, 9.4_
-  - [ ] 10.4 [DOM] Extend `renderDashboard` in `app.js`
+  - [x] 10.4 [DOM] Extend `renderDashboard` in `app.js`
     - Populate the new metrics; render an independent per-metric empty-state so a missing metric never blanks a populated one; preserve countdown, heatmap, streak, priority tasks, and repeat-misses panels
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
-  - [ ] 10.5 [DOM] Add dashboard enhancement styles in `styles.css`
+  - [x] 10.5 [DOM] Add dashboard enhancement styles in `styles.css`
     - _Requirements: 9.6_
 
 - [ ] 11. Checkpoint — high-priority modules
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. CARS Practice Tracker (Req 10)
+- [x] 12. CARS Practice Tracker (Req 10)
   - [x] 12.1 [PURE] Implement `validateCarsEntry`, `avgMinutesPerPassage`, `accuracyByQuestionType`
     - Validate date ≤ today, accuracy 0–100, time (0,600], passages int 1–99, difficulty/question-types within allowed sets; aggregates 1-dp; types with no entries omitted
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
@@ -211,13 +211,13 @@ Task conventions:
   - [x] 12.3 [DOM] Add CARS Tracker view markup and nav entry
     - Nav entry + `<section id="view-cars">` with entry form, entry list, avg-minutes display, and accuracy-by-question-type display
     - _Requirements: 10.2, 20.1_
-  - [ ] 12.4 [DOM] Implement `renderCars` and handlers in `app.js`
+  - [x] 12.4 [DOM] Implement `renderCars` and handlers in `app.js`
     - Validate on submit (reject + message, state unchanged); list within 1s; show empty-state hiding aggregates when no entries
     - _Requirements: 10.1, 10.3, 10.4, 10.5, 10.6, 10.7_
   - [x] 12.5 [DOM] Add CARS Tracker styles in `styles.css`
     - _Requirements: 10.7_
 
-- [ ] 13. Review and Spaced-Repetition Tracker (Req 11)
+- [x] 13. Review and Spaced-Repetition Tracker (Req 11)
   - [x] 13.1 [PURE] Implement spaced-repetition math
     - `nextInterval`, `markReviewed`, `markMissed`, `reviewState`, `dueCount`, `retentionRate` ("N/A" on zero denominator), `topicsByRetention` (ascending, ties alphabetical) using `REVIEW_INTERVALS=[1,3,7,21]`
     - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9, 11.10_
@@ -230,13 +230,13 @@ Task conventions:
   - [x] 13.3 [DOM] Add Review view markup and nav entry
     - Nav entry + `<section id="view-review">` with add-item form, item list with reviewed/missed buttons, due count, and retention/topics display
     - _Requirements: 11.1, 20.1_
-  - [ ] 13.4 [DOM] Implement `renderReview` and handlers in `app.js`
+  - [x] 13.4 [DOM] Implement `renderReview` and handlers in `app.js`
     - Create item (state "new"); reviewed/missed buttons call pure helpers and persist; derive `reviewState`/`dueCount` per current date; show retention rate and topics-by-retention
     - _Requirements: 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9, 11.10_
-  - [ ] 13.5 [DOM] Add Review styles in `styles.css`
+  - [x] 13.5 [DOM] Add Review styles in `styles.css`
     - _Requirements: 11.1_
 
-- [ ] 14. Resource Tracker enhancements (Req 12)
+- [x] 14. Resource Tracker enhancements (Req 12)
   - [x] 14.1 [PURE] Implement `validateResourceCounts`, `completionPct`, `sortByPriority`
     - Integers ≥0 with completed≤total; `completionPct` returns "0%" when total===0 (no division) else 1-dp "x.x%"; `sortByPriority` high→low (errors surfaced, no fallback)
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.7, 12.8_
@@ -244,13 +244,13 @@ Task conventions:
     - **Property 29: Resource completion percentage handles the zero denominator** — **Validates: Requirements 12.2, 12.3**
     - **Property 30: Resource count validation** — **Validates: Requirements 12.4, 12.5**
     - **Property 31: Priority sort ordering** — **Validates: Requirements 12.7**
-  - [ ] 14.3 [DOM] Extend Resources view markup with the editable tracker
+  - [x] 14.3 [DOM] Extend Resources view markup with the editable tracker
     - Add a tracker list/form (name, type, totals, completed, accuracy, priority, notes) and an order-by-priority control ABOVE/BELOW the existing static resource links, leaving those links untouched
     - _Requirements: 12.1, 12.6_
-  - [ ] 14.4 [DOM] Implement `renderResources` tracker logic and handlers in `app.js`
+  - [x] 14.4 [DOM] Implement `renderResources` tracker logic and handlers in `app.js`
     - Validate counts on entry (reject + retain prior); display `completionPct`; priority sorting via `sortByPriority` (error + unchanged view on failure); preserve existing static links exactly
     - _Requirements: 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8_
-  - [ ] 14.5 [DOM] Add Resource Tracker styles in `styles.css`
+  - [x] 14.5 [DOM] Add Resource Tracker styles in `styles.css`
     - _Requirements: 12.1_
 
 - [ ] 15. Formula and Equation Sheet (Req 13)
@@ -260,13 +260,13 @@ Task conventions:
   - [ ]* 15.2 [PURE] Property tests: search filter and tag filter
     - **Property 32: Formula and note search is a correct case-insensitive substring filter** — **Validates: Requirements 13.2, 13.4, 14.3**
     - **Property 33: Tag filter returns entries with at least one selected tag** — **Validates: Requirements 13.9**
-  - [ ] 15.3 [DOM] Add Formulas view markup and nav entry
+  - [x] 15.3 [DOM] Add Formulas view markup and nav entry
     - Nav entry + `<section id="view-formulas">` with search box, tag-filter chips, entry list, per-entry memorized toggle, and practice-recall reveal control
     - _Requirements: 13.1, 20.1_
   - [ ] 15.4 [DOM] Implement `renderFormulas` and handlers in `app.js`
     - Search/tag filtering via pure helpers; no-match message; clear-term restores all (or active tag filter); memorized toggle persists; practice-recall hides expression and reveal un-hides
     - _Requirements: 13.2, 13.3, 13.4, 13.5, 13.6, 13.7, 13.8, 13.9_
-  - [ ] 15.5 [DOM] Add Formula sheet styles in `styles.css`
+  - [x] 15.5 [DOM] Add Formula sheet styles in `styles.css`
     - _Requirements: 13.1_
 
 - [ ] 16. High-Yield Notes (Req 14)
@@ -286,7 +286,7 @@ Task conventions:
     - _Requirements: 14.2_
 
 - [ ] 17. Goals and Milestones (Req 15)
-  - [ ] 17.1 [PURE] Implement goal-progress helpers and milestone validation
+  - [x] 17.1 [PURE] Implement goal-progress helpers and milestone validation
     - Reuse `validateTarget` (task 3.4), `weeklyHourProgress`, `dailyQuestionProgress` (task 10.1); completed full-length count; milestone list capped at 100
     - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.7_
   - [ ] 17.2 [DOM] Add Goals view markup and nav entry
