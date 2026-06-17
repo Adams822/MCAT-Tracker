@@ -241,3 +241,100 @@ test("Property 10: validateCustomTopic accepts iff length 1..100 and not a case-
     { numRuns: 200 }
   );
 });
+
+/* ================================================================== */
+/* Smoke test (task 9.6): subject tree renders the four sections      */
+/* and their groupings                                                */
+/* Validates: Requirements 5.1                                        */
+/* ================================================================== */
+
+// Expected blueprint structure: section -> group name -> topic labels.
+// Mirrors CONTENT_SUBJECT_TREE so a drift in core.js is caught here.
+const EXPECTED_TREE = [
+  {
+    section: "C/P",
+    groups: [
+      {
+        name: "Chemical and Physical Foundations",
+        topics: ["General Chemistry", "Organic Chemistry", "Physics", "Biochemistry"],
+      },
+    ],
+  },
+  {
+    section: "CARS",
+    groups: [
+      {
+        name: "Critical Analysis and Reasoning Skills",
+        topics: ["Passage practice", "Timing", "Question type review"],
+      },
+    ],
+  },
+  {
+    section: "B/B",
+    groups: [
+      {
+        name: "Biological and Biochemical Foundations",
+        topics: ["Biology", "Biochemistry", "Experimental design"],
+      },
+    ],
+  },
+  {
+    section: "P/S",
+    groups: [
+      {
+        name: "Psychological, Social, and Biological Foundations",
+        topics: ["Psychology", "Sociology", "Research methods/statistics"],
+      },
+    ],
+  },
+];
+
+test("smoke: buildSubjectTree exposes exactly the four MCAT sections in order", () => {
+  const tree = buildSubjectTree([]);
+  assert.ok(Array.isArray(tree), "tree must be an array");
+  assert.strictEqual(tree.length, 4, "tree must have four sections");
+  assert.deepStrictEqual(
+    tree.map((node) => node.section),
+    ["C/P", "CARS", "B/B", "P/S"]
+  );
+});
+
+test("smoke: each section exposes its blueprint groupings and topics", () => {
+  const tree = buildSubjectTree([]);
+  for (const expected of EXPECTED_TREE) {
+    const node = tree.find((n) => n.section === expected.section);
+    assert.ok(node, `section missing: ${expected.section}`);
+    assert.deepStrictEqual(
+      node.groups,
+      expected.groups,
+      `groupings/topics mismatch for section ${expected.section}`
+    );
+  }
+});
+
+test("smoke: custom topics merge under a Custom group without dropping predefined groups", () => {
+  const tree = buildSubjectTree([{ section: "C/P", label: "Thermodynamics" }]);
+
+  // All four sections still present.
+  assert.strictEqual(tree.length, 4);
+
+  const cp = tree.find((n) => n.section === "C/P");
+  assert.ok(cp, "C/P section must be present");
+
+  // The predefined group is untouched.
+  const predefined = cp.groups.find(
+    (g) => g.name === "Chemical and Physical Foundations"
+  );
+  assert.ok(predefined, "predefined C/P group must remain");
+  assert.deepStrictEqual(predefined.topics, [
+    "General Chemistry",
+    "Organic Chemistry",
+    "Physics",
+    "Biochemistry",
+  ]);
+
+  // The custom topic attaches under a trailing Custom group.
+  const custom = cp.groups.find((g) => g.name === "Custom");
+  assert.ok(custom, "Custom group must be created for the custom topic");
+  assert.deepStrictEqual(custom.topics, ["Thermodynamics"]);
+});
