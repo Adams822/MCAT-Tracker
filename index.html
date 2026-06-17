@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MCAT Command Center</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">MCAT</div>
+        <div class="brand-sub">Command Center</div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-view="dashboard"><span class="nav-ico">◎</span> Dashboard</button>
+        <button class="nav-btn" data-view="calendar"><span class="nav-ico">▦</span> Calendar</button>
+        <button class="nav-btn" data-view="tasks"><span class="nav-ico">✓</span> To-Do List</button>
+        <button class="nav-btn" data-view="pomodoro"><span class="nav-ico">⏱</span> Pomodoro</button>
+        <button class="nav-btn" data-view="focus"><span class="nav-ico">◆</span> Focus Topics</button>
+        <button class="nav-btn" data-view="content"><span class="nav-ico">▤</span> Content Tracker</button>
+        <button class="nav-btn" data-view="practice"><span class="nav-ico">◈</span> Practice Questions</button>
+        <button class="nav-btn" data-view="wrong"><span class="nav-ico">✗</span> Wrong Answers</button>
+        <button class="nav-btn" data-view="scores"><span class="nav-ico">▲</span> Test Scores</button>
+        <button class="nav-btn" data-view="analytics"><span class="nav-ico">📊</span> Analytics</button>
+        <button class="nav-btn" data-view="cars"><span class="nav-ico">❡</span> CARS Tracker</button>
+        <button class="nav-btn" data-view="review"><span class="nav-ico">↻</span> Review</button>
+        <button class="nav-btn" data-view="application"><span class="nav-ico">✎</span> Application</button>
+        <button class="nav-btn" data-view="resources"><span class="nav-ico">▣</span> Resources</button>
+      </nav>
+
+      <div class="streak-box">
+        <div class="streak-num" id="streakNum">0</div>
+        <div class="streak-label">day streak</div>
+        <div class="streak-sub" id="todayHours">0.0 h today</div>
+      </div>
+
+      <div class="sidebar-foot">
+        <button class="ghost-btn" id="themeBtn">☾ Dark / ☀ Light</button>
+        <button class="ghost-btn" id="exportBtn">⬇ Export backup</button>
+        <button class="ghost-btn" id="importBtn">⬆ Import backup</button>
+        <input type="file" id="importFile" accept="application/json" hidden />
+        <div class="foot-note">Said it · Did it.</div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+      <!-- DASHBOARD -->
+      <section class="view active" id="view-dashboard">
+        <header class="view-head">
+          <h1>Dashboard</h1>
+          <p class="muted">Wake up. Read the plan. Execute. No deciding.</p>
+        </header>
+
+        <div class="quote-bar" id="quoteBar">
+          <span class="quote-mark">“</span>
+          <span id="quoteText">Discipline is choosing between what you want now and what you want most.</span>
+        </div>
+
+        <div class="countdown-card">
+          <div class="countdown-top">
+            <div>
+              <div class="countdown-label">Time until test day</div>
+              <div class="countdown-date" id="testDateLabel">No date set</div>
+            </div>
+            <div class="countdown-edit">
+              <input type="date" id="testDateInput" />
+            </div>
+          </div>
+          <div class="countdown-timer" id="countdownTimer">
+            <div class="cd-unit"><span id="cdDays">--</span><label>days</label></div>
+            <div class="cd-unit"><span id="cdHours">--</span><label>hrs</label></div>
+            <div class="cd-unit"><span id="cdMins">--</span><label>min</label></div>
+            <div class="cd-unit"><span id="cdSecs">--</span><label>sec</label></div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="stat-card"><div class="stat-num" id="statToday">0/0</div><div class="stat-label">Today's tasks done</div></div>
+          <div class="stat-card"><div class="stat-num" id="statWeekHrs">0.0</div><div class="stat-label">Hours this week</div></div>
+          <div class="stat-card"><div class="stat-num" id="statLatest">--</div><div class="stat-label">Latest full-length</div></div>
+          <div class="stat-card"><div class="stat-num" id="statGap">--</div><div class="stat-label">Points to target</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Study heatmap</h2>
+            <span class="muted small"><span id="totalHours">0</span> total hrs · <span id="studyDays">0</span> study days</span>
+          </div>
+          <div class="heatmap-wrap">
+            <div class="heatmap" id="heatmap"></div>
+          </div>
+          <div class="heat-legend">
+            <span class="muted small">Less</span>
+            <span class="heat-cell lvl0"></span>
+            <span class="heat-cell lvl1"></span>
+            <span class="heat-cell lvl2"></span>
+            <span class="heat-cell lvl3"></span>
+            <span class="heat-cell lvl4"></span>
+            <span class="muted small">More</span>
+          </div>
+        </div>
+
+        <div class="dash-row">
+          <div class="panel">
+            <div class="panel-head"><h2>Today · Priority tasks</h2><span class="muted small">daily list</span></div>
+            <ul class="mini-tasks" id="dashTasks"><li class="empty">No daily tasks yet.</li></ul>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Repeat misses</h2><span class="muted small">unresolved</span></div>
+            <ul class="mini-topics" id="dashWrong"><li class="empty">No flagged misses.</li></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- CALENDAR -->
+      <section class="view" id="view-calendar">
+        <header class="view-head">
+          <h1>Calendar</h1>
+          <p class="muted">Plan it, see it, do it. Today · Week · Month.</p>
+        </header>
+
+        <form class="cal-form" id="calForm">
+          <input type="date" id="ceDate" />
+          <input type="time" id="ceTime" />
+          <select id="ceDur">
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60" selected>1 hr</option>
+            <option value="90">1.5 hr</option>
+            <option value="120">2 hr</option>
+            <option value="180">3 hr</option>
+          </select>
+          <input type="text" id="ceTitle" placeholder="Event (e.g. Blueprint FL2)…" autocomplete="off" />
+          <select id="ceType">
+            <option value="study">Study</option>
+            <option value="test">Test / FL</option>
+            <option value="application">Application</option>
+            <option value="personal">Personal</option>
+          </select>
+          <button type="submit" class="btn">Add</button>
+        </form>
+
+        <div class="cal-gen">
+          <span class="muted small">Auto-fill study schedule from</span>
+          <input type="date" id="genStart" />
+          <select id="genWeeks">
+            <option value="1">1 week</option>
+            <option value="2">2 weeks</option>
+            <option value="3">3 weeks</option>
+            <option value="4">4 weeks</option>
+            <option value="6">6 weeks</option>
+          </select>
+          <button class="btn" id="genBtn">⚡ Generate</button>
+          <button class="btn ghost" id="genClear">Clear generated</button>
+        </div>
+
+        <div class="cal-bar">
+          <div class="cal-views" id="calViews">
+            <button class="tab active" data-cal="day">Today</button>
+            <button class="tab" data-cal="week">Week</button>
+            <button class="tab" data-cal="month">Month</button>
+          </div>
+          <div class="cal-nav">
+            <button class="btn ghost" id="calPrev">‹</button>
+            <button class="btn ghost" id="calToday">Today</button>
+            <button class="btn ghost" id="calNext">›</button>
+          </div>
+          <div class="cal-label" id="calLabel"></div>
+        </div>
+
+        <div class="cal-body" id="calBody"></div>
+      </section>
+
+      <section class="view" id="view-tasks">
+        <header class="view-head">
+          <h1>To-Do List</h1>
+          <p class="muted">Daily, weekly, monthly. Recurring tasks reset automatically.</p>
+        </header>
+        <div class="tabs" id="taskTabs">
+          <button class="tab active" data-scope="daily">Daily</button>
+          <button class="tab" data-scope="weekly">Weekly</button>
+          <button class="tab" data-scope="monthly">Monthly</button>
+        </div>
+        <form class="add-form" id="taskForm">
+          <input type="text" id="taskInput" placeholder="Add a task…" autocomplete="off" />
+          <select id="taskPriority">
+            <option value="high">High</option>
+            <option value="med" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <button type="submit" class="btn">Add</button>
+        </form>
+        <ul class="task-list" id="taskList"></ul>
+        <div class="list-foot">
+          <span class="muted small" id="taskCount"></span>
+          <div class="foot-actions">
+            <button class="link-btn" id="restoreDefaults">↺ Restore Week 1 defaults</button>
+            <button class="link-btn" id="clearDone">Clear completed</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- POMODORO -->
+      <section class="view" id="view-pomodoro">
+        <header class="view-head">
+          <h1>Pomodoro</h1>
+          <p class="muted">Win the next block. Focus time logs straight into your heatmap.</p>
+        </header>
+
+        <div class="pomo-card">
+          <div class="pomo-mode" id="pomoMode">Focus</div>
+          <div class="pomo-time" id="pomoTime">40:00</div>
+          <div class="pomo-controls">
+            <button class="btn" id="pomoStart">Start</button>
+            <button class="btn ghost" id="pomoPause">Pause</button>
+            <button class="btn ghost" id="pomoReset">Reset</button>
+            <button class="btn ghost" id="pomoSkip">Skip ⏭</button>
+          </div>
+          <div class="pomo-round" id="pomoRound">Round 1 · today: <span id="pomoTodayCount">0</span> focus blocks</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Timer settings</h2><span class="muted small">customize your blocks</span></div>
+          <div class="pomo-settings">
+            <div class="score-field small"><label>Focus (min)</label><input type="number" id="setWork" min="1" max="180" /></div>
+            <div class="score-field small"><label>Break (min)</label><input type="number" id="setBreak" min="1" max="60" /></div>
+            <div class="score-field small"><label>Long break</label><input type="number" id="setLong" min="1" max="60" /></div>
+            <div class="score-field small"><label>Rounds → long</label><input type="number" id="setRounds" min="1" max="12" /></div>
+            <button class="btn" id="savePomo">Save</button>
+          </div>
+          <div class="pomo-manual">
+            <span class="muted small">Studied off-timer? Log it:</span>
+            <input type="number" id="manualMin" placeholder="minutes" min="1" max="600" style="width:110px" />
+            <button class="btn ghost" id="logManual">+ Log time</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- FOCUS TOPICS -->
+      <section class="view" id="view-focus">
+        <header class="view-head">
+          <h1>Focus Topics</h1>
+          <p class="muted">High-yield subjects and concepts to drill.</p>
+        </header>
+        <form class="add-form wide" id="topicForm">
+          <input type="text" id="topicInput" placeholder="Concept (e.g. acid-base titration curves)…" autocomplete="off" />
+          <select id="topicSection"><option>C/P</option><option>CARS</option><option>B/B</option><option>P/S</option></select>
+          <select id="topicStatus">
+            <option value="new">🔴 New</option>
+            <option value="reviewing">🟡 Reviewing</option>
+            <option value="solid">🟢 Solid</option>
+          </select>
+          <button type="submit" class="btn">Add</button>
+        </form>
+        <div class="filter-row" id="topicFilters">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="C/P">C/P</button>
+          <button class="chip" data-filter="CARS">CARS</button>
+          <button class="chip" data-filter="B/B">B/B</button>
+          <button class="chip" data-filter="P/S">P/S</button>
+        </div>
+        <div class="topic-grid" id="topicGrid"></div>
+      </section>
+
+      <!-- CONTENT TRACKER -->
+      <section class="view" id="view-content">
+        <header class="view-head">
+          <h1>Content Tracker</h1>
+          <p class="muted">Track your review status across every MCAT subject and topic.</p>
+        </header>
+
+        <form class="add-form wide" id="contentCustomForm">
+          <select id="ccSection"><option>C/P</option><option>CARS</option><option>B/B</option><option>P/S</option></select>
+          <input type="text" id="ccLabel" placeholder="Add a custom topic…" maxlength="100" autocomplete="off" />
+          <button type="submit" class="btn">Add topic</button>
+        </form>
+        <div class="form-error" id="contentCustomError" hidden></div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Status summary</h2><span class="muted small">topics per status</span></div>
+          <div id="contentStatusCounts"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Subject tree</h2><span class="muted small">set a status for each topic</span></div>
+          <div id="contentTree"></div>
+        </div>
+      </section>
+
+      <!-- PRACTICE QUESTIONS -->
+      <section class="view" id="view-practice">
+        <header class="view-head">
+          <h1>Practice Questions</h1>
+          <p class="muted">Log every set. Track accuracy by topic, section, and timing.</p>
+        </header>
+
+        <form class="practice-form" id="practiceForm">
+          <div class="score-field"><label>Date</label><input type="date" id="pqDate" /></div>
+          <div class="score-field"><label>Resource</label><input type="text" id="pqResource" placeholder="UWorld / AAMC QPack" maxlength="100" /></div>
+          <div class="score-field small"><label>Section</label>
+            <select id="pqSection"><option>C/P</option><option>CARS</option><option>B/B</option><option>P/S</option></select>
+          </div>
+          <div class="score-field grow"><label>Topic</label><input type="text" id="pqTopic" placeholder="Amino acids" maxlength="100" /></div>
+          <div class="score-field small"><label>Correct</label><input type="number" id="pqCorrect" min="0" max="9999" /></div>
+          <div class="score-field small"><label>Attempted</label><input type="number" id="pqAttempted" min="1" max="9999" /></div>
+          <div class="score-field small"><label>Timing</label>
+            <select id="pqTiming"><option value="timed">Timed</option><option value="untimed">Untimed</option></select>
+          </div>
+          <div class="score-field small"><label>Difficulty</label>
+            <select id="pqDifficulty"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
+          </div>
+          <div class="score-field grow"><label>Notes</label><input type="text" id="pqNotes" placeholder="Reasoning, traps…" maxlength="500" /></div>
+          <button type="submit" class="btn">Add</button>
+        </form>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Recorded sets</h2><span class="muted small">most recent first</span></div>
+          <table class="practice-table">
+            <thead><tr><th>Date</th><th>Section</th><th>Topic</th><th>Correct</th><th>Attempted</th><th>%</th><th>Timed</th><th></th></tr></thead>
+            <tbody id="practiceBody"></tbody>
+          </table>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-head"><h2>Accuracy over time</h2><span class="muted small">one point per set</span></div>
+          <div class="chart-wrap"><svg id="pqChartOverTime" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+          <div class="empty-state" id="pqChartOverTimeEmpty">No practice sets yet.</div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-head"><h2>Accuracy by topic</h2><span class="muted small">aggregated</span></div>
+          <div class="chart-wrap"><svg id="pqChartByTopic" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+          <div class="empty-state" id="pqChartByTopicEmpty">No practice sets yet.</div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-head"><h2>Accuracy by section</h2><span class="muted small">aggregated</span></div>
+          <div class="chart-wrap"><svg id="pqChartBySection" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+          <div class="empty-state" id="pqChartBySectionEmpty">No practice sets yet.</div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-head"><h2>Timed vs untimed</h2><span class="muted small">aggregated</span></div>
+          <div class="chart-wrap"><svg id="pqChartTimed" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+          <div class="empty-state" id="pqChartTimedEmpty">No practice sets yet.</div>
+        </div>
+      </section>
+
+      <!-- WRONG ANSWERS -->
+      <section class="view" id="view-wrong">
+        <header class="view-head">
+          <h1>Wrong Answers</h1>
+          <p class="muted">Every miss logged. Review > raw questions. Catch the repeats.</p>
+        </header>
+        <form class="wrong-form" id="wrongForm">
+          <div class="score-field"><label>Source / Q#</label><input type="text" id="wSource" placeholder="UWorld Q1234" /></div>
+          <div class="score-field"><label>Topic</label><input type="text" id="wTopic" placeholder="Le Chatelier" /></div>
+          <div class="score-field small"><label>Section</label>
+            <select id="wSection"><option>C/P</option><option>CARS</option><option>B/B</option><option>P/S</option></select>
+          </div>
+          <div class="score-field grow"><label>Why I missed it</label><input type="text" id="wWhy" placeholder="misread the question / content gap…" /></div>
+          <div class="score-field"><label>Mistake category</label>
+            <select id="wCategory">
+              <option value="unset">— category —</option>
+              <option value="content gap">content gap</option>
+              <option value="misread question">misread question</option>
+              <option value="misread passage">misread passage</option>
+              <option value="calculation error">calculation error</option>
+              <option value="timing issue">timing issue</option>
+              <option value="wrong reasoning">wrong reasoning</option>
+              <option value="trap answer">trap answer</option>
+              <option value="did not know formula">did not know formula</option>
+              <option value="guessed">guessed</option>
+            </select>
+          </div>
+          <div class="score-field small"><label>Retest date</label><input type="date" id="wRetest" /></div>
+          <div class="score-field grow"><label>Correct-answer explanation</label><textarea id="wExplanation" maxlength="2000" rows="2" placeholder="Why the correct answer is correct…"></textarea></div>
+          <div class="score-field grow"><label>Takeaway</label><textarea id="wTakeaway" maxlength="2000" rows="2" placeholder="What to remember next time…"></textarea></div>
+          <div class="score-field check"><label><input type="checkbox" id="wNeedsReview" /> Needs review</label></div>
+          <button type="submit" class="btn">Log miss</button>
+        </form>
+
+        <div class="filter-row" id="wrongFilters">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="open">Open</button>
+          <button class="chip" data-filter="repeat">Repeats</button>
+          <button class="chip" data-filter="resolved">Resolved</button>
+        </div>
+
+        <div class="panel" id="repeatPanel" style="display:none">
+          <div class="panel-head"><h2>⚠ Repeat topics</h2><span class="muted small">missed more than once</span></div>
+          <div class="repeat-tags" id="repeatTags"></div>
+        </div>
+
+        <div class="panel" id="categoryCountPanel">
+          <div class="panel-head"><h2>Mistakes by category</h2></div>
+          <div id="categoryCounts"></div>
+        </div>
+
+        <table class="wrong-table">
+          <!-- NOTE: "Category" column added here for task 6.3; renderWrong (task 6.4) must add a matching <td> cell per row -->
+          <thead><tr><th>Date</th><th>Source</th><th>Topic</th><th>Sec</th><th>Category</th><th>Why</th><th>Misses</th><th>Status</th><th></th></tr></thead>
+          <tbody id="wrongBody"></tbody>
+        </table>
+      </section>
+
+      <!-- SCORES -->
+      <section class="view" id="view-scores">
+        <header class="view-head">
+          <h1>Test Scores</h1>
+          <p class="muted">Log every full-length. Watch the climb.</p>
+        </header>
+        <form class="score-form" id="scoreForm">
+          <div class="score-field"><label>Date</label><input type="date" id="sDate" /></div>
+          <div class="score-field"><label>Test</label><input type="text" id="sName" placeholder="BP FL2 / AAMC FL1" maxlength="100" /></div>
+          <div class="score-field small"><label>C/P</label><input type="number" id="sCP" min="118" max="132" /></div>
+          <div class="score-field small"><label>CARS</label><input type="number" id="sCARS" min="118" max="132" /></div>
+          <div class="score-field small"><label>B/B</label><input type="number" id="sBB" min="118" max="132" /></div>
+          <div class="score-field small"><label>P/S</label><input type="number" id="sPS" min="118" max="132" /></div>
+          <div class="score-field small"><label>C/P %ile</label><input type="number" id="sPctCP" min="0" max="100" placeholder="0-100" /></div>
+          <div class="score-field small"><label>CARS %ile</label><input type="number" id="sPctCARS" min="0" max="100" placeholder="0-100" /></div>
+          <div class="score-field small"><label>B/B %ile</label><input type="number" id="sPctBB" min="0" max="100" placeholder="0-100" /></div>
+          <div class="score-field small"><label>P/S %ile</label><input type="number" id="sPctPS" min="0" max="100" placeholder="0-100" /></div>
+          <div class="score-field small"><label>Total %ile</label><input type="number" id="sPctTotal" min="0" max="100" placeholder="0-100" /></div>
+          <div class="score-field small"><label>Time (min)</label><input type="number" id="sTimeTaken" min="1" max="1440" placeholder="1-1440" /></div>
+          <div class="score-field"><label>Review status</label>
+            <select id="sReviewStatus">
+              <option value="not reviewed">not reviewed</option>
+              <option value="reviewed">reviewed</option>
+            </select>
+          </div>
+          <div class="score-field score-conditions">
+            <label>Testing conditions</label>
+            <div class="cond-checks">
+              <label class="cond-check"><input type="checkbox" id="sCondTimed" /> Timed</label>
+              <label class="cond-check"><input type="checkbox" id="sCondSingleSitting" /> Single sitting</label>
+              <label class="cond-check"><input type="checkbox" id="sCondWithBreaks" /> With breaks</label>
+              <label class="cond-check"><input type="checkbox" id="sCondRealConditions" /> Real test conditions</label>
+            </div>
+          </div>
+          <div class="score-field score-lessons">
+            <label>Biggest lessons</label>
+            <textarea id="sLessons" maxlength="2000" rows="3" placeholder="What you learned from this exam"></textarea>
+          </div>
+          <button type="submit" class="btn">Add score</button>
+        </form>
+        <div class="panel chart-panel">
+          <div class="panel-head"><h2>Total score over time</h2><span class="muted small">target line at <span id="chartTarget">510</span></span></div>
+          <div class="chart-wrap"><svg id="scoreChart" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Section score trends</h2><span class="muted small">per section, by date</span></div>
+          <div class="chart-grid section-trend-grid">
+            <div class="chart-panel">
+              <div class="panel-head"><h3>C/P</h3></div>
+              <div class="chart-wrap"><svg id="sTrendCP" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+              <div class="empty-state" id="sTrendCPEmpty">No exams logged yet.</div>
+            </div>
+            <div class="chart-panel">
+              <div class="panel-head"><h3>CARS</h3></div>
+              <div class="chart-wrap"><svg id="sTrendCARS" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+              <div class="empty-state" id="sTrendCARSEmpty">No exams logged yet.</div>
+            </div>
+            <div class="chart-panel">
+              <div class="panel-head"><h3>B/B</h3></div>
+              <div class="chart-wrap"><svg id="sTrendBB" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+              <div class="empty-state" id="sTrendBBEmpty">No exams logged yet.</div>
+            </div>
+            <div class="chart-panel">
+              <div class="panel-head"><h3>P/S</h3></div>
+              <div class="chart-wrap"><svg id="sTrendPS" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+              <div class="empty-state" id="sTrendPSEmpty">No exams logged yet.</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>History</h2></div>
+          <table class="score-table">
+            <thead><tr><th>Date</th><th>Test</th><th>Total</th><th>C/P</th><th>CARS</th><th>B/B</th><th>P/S</th><th>Review</th><th></th></tr></thead>
+            <tbody id="scoreBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section class="view" id="view-analytics">
+        <header class="view-head">
+          <h1>Analytics</h1>
+          <p class="muted">Where are you weak, and are you improving? One page, every metric.</p>
+        </header>
+
+        <div class="panel chart-panel">
+          <div class="panel-head"><h2>Accuracy by section</h2><span class="muted small">all practice sets</span></div>
+          <div class="chart-wrap"><svg id="anChartBySection" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+          <div class="empty-state" id="anChartBySectionEmpty">No practice data yet.</div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-head"><h2>Accuracy by topic</h2><span class="muted small">all practice sets</span></div>
+          <div class="chart-wrap"><svg id="anChartByTopic" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+          <div class="empty-state" id="anChartByTopicEmpty">No practice data yet.</div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-head"><h2>Practice volume per week</h2><span class="muted small">questions attempted · Mon–Sun</span></div>
+          <div class="chart-wrap"><svg id="anChartVolume" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+          <div class="empty-state" id="anChartVolumeEmpty">No practice data yet.</div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-head"><h2>Study hours per week</h2><span class="muted small">logged sessions · Mon–Sun</span></div>
+          <div class="chart-wrap"><svg id="anChartHours" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+          <div class="empty-state" id="anChartHoursEmpty">No study sessions yet.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Weakness ranking</h2><span class="muted small">lowest accuracy first</span></div>
+          <div id="anWeakness"></div>
+          <div class="empty-state" id="anWeaknessEmpty">No practice data yet.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Mistake frequency</h2><span class="muted small">by category, most frequent first</span></div>
+          <div id="anMistakes"></div>
+          <div class="empty-state" id="anMistakesEmpty">No logged mistakes yet.</div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-head"><h2>Full-length total score</h2><span class="muted small">by date taken</span></div>
+          <div class="chart-wrap"><svg id="anChartTotalTrend" viewBox="0 0 600 240" preserveAspectRatio="none"></svg></div>
+          <div class="empty-state" id="anChartTotalTrendEmpty">No full-length exams yet.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Predicted score range</h2><span class="muted small">needs 2+ full-lengths</span></div>
+          <div id="anPredicted"></div>
+          <div class="empty-state" id="anPredictedEmpty">Log at least two full-length exams to see a prediction.</div>
+        </div>
+      </section>
+
+      <!-- CARS TRACKER -->
+      <section class="view" id="view-cars">
+        <header class="view-head">
+          <h1>CARS Tracker</h1>
+          <p class="muted">Passage accuracy, timing, and reasoning mistakes — kept separate from the sciences.</p>
+        </header>
+
+        <form class="cars-form" id="carsForm">
+          <div class="score-field"><label>Date</label><input type="date" id="carDate" /></div>
+          <div class="score-field small"><label>Passages</label><input type="number" id="carPassages" min="1" max="99" placeholder="1–99" /></div>
+          <div class="score-field small"><label>Accuracy %</label><input type="number" id="carAccuracy" min="0" max="100" placeholder="0–100" /></div>
+          <div class="score-field small"><label>Min / passage</label><input type="number" id="carTime" min="0" step="0.1" placeholder="minutes" /></div>
+          <div class="score-field small"><label>Difficulty</label>
+            <select id="carDifficulty"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
+          </div>
+          <fieldset class="score-field grow car-qtypes">
+            <legend>Question types</legend>
+            <label><input type="checkbox" class="car-qtype" id="carType0" value="main idea" /> Main idea</label>
+            <label><input type="checkbox" class="car-qtype" id="carType1" value="author's tone" /> Author's tone</label>
+            <label><input type="checkbox" class="car-qtype" id="carType2" value="inference" /> Inference</label>
+            <label><input type="checkbox" class="car-qtype" id="carType3" value="function" /> Function</label>
+            <label><input type="checkbox" class="car-qtype" id="carType4" value="detail" /> Detail</label>
+            <label><input type="checkbox" class="car-qtype" id="carType5" value="new information/application" /> New information/application</label>
+          </fieldset>
+          <div class="score-field grow"><label>Notes</label><input type="text" id="carNotes" placeholder="Reasoning mistakes…" maxlength="2000" /></div>
+          <button type="submit" class="btn">Add</button>
+        </form>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Recorded passages</h2><span class="muted small">most recent first</span></div>
+          <table class="cars-table">
+            <thead><tr><th>Date</th><th>Passages</th><th>Accuracy</th><th>Min / passage</th><th>Difficulty</th><th>Question types</th><th></th></tr></thead>
+            <tbody id="carsBody"></tbody>
+          </table>
+          <div class="empty-state" id="carsEmpty">No CARS passages logged yet.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Average minutes per passage</h2><span class="muted small">across all entries</span></div>
+          <div id="carsAvgMinutes"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Accuracy by question type</h2><span class="muted small">tagged entries only</span></div>
+          <div id="carsAccByType"></div>
+        </div>
+      </section>
+
+      <!-- REVIEW / SPACED REPETITION -->
+      <section class="view" id="view-review">
+        <header class="view-head">
+          <h1>Review</h1>
+          <p class="muted">Spaced-repetition queue — review weak topics on a 1, 3, 7, 21 day schedule.</p>
+        </header>
+
+        <form class="add-form wide" id="reviewForm">
+          <div class="score-field grow"><label>Topic</label><input type="text" id="rvTopic" placeholder="Topic to review…" maxlength="100" autocomplete="off" /></div>
+          <div class="score-field grow"><label>Content</label><textarea id="rvContent" placeholder="What to remember…" maxlength="2000" rows="2"></textarea></div>
+          <button type="submit" class="btn">Add</button>
+        </form>
+
+        <div class="review-summary">
+          <div class="panel">
+            <div class="panel-head"><h2>Due today</h2></div>
+            <div id="reviewDue"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Retention rate</h2></div>
+            <div id="reviewRetention"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Topics by retention</h2><span class="muted small">lowest first</span></div>
+          <div id="reviewTopics"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Review items</h2></div>
+          <div id="reviewList"></div>
+          <div class="empty-state" id="reviewEmpty">No review items yet.</div>
+        </div>
+      </section>
+
+      <!-- APPLICATION -->
+      <section class="view" id="view-application">
+        <header class="view-head">
+          <h1>Application</h1>
+          <p class="muted">Strictly application updates. Kept separate from study.</p>
+        </header>
+        <form class="add-form wide" id="appForm">
+          <input type="text" id="appInput" placeholder="Application update or task…" autocomplete="off" />
+          <select id="appStatus"><option value="todo">To do</option><option value="progress">In progress</option><option value="done">Done</option></select>
+          <button type="submit" class="btn">Add</button>
+        </form>
+        <div class="app-columns">
+          <div class="app-col"><h3>To do</h3><ul class="app-list" id="appTodo"></ul></div>
+          <div class="app-col"><h3>In progress</h3><ul class="app-list" id="appProgress"></ul></div>
+          <div class="app-col"><h3>Done</h3><ul class="app-list" id="appDone"></ul></div>
+        </div>
+      </section>
+
+      <!-- RESOURCES -->
+      <section class="view" id="view-resources">
+        <header class="view-head">
+          <h1>Resources</h1>
+          <p class="muted">Your tip sheets and decks. Click one to open it.</p>
+        </header>
+        <div id="resourceGroups"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Event editor modal -->
+  <div class="modal-overlay" id="evModal" hidden>
+    <div class="modal" id="evModalCard">
+      <h3 id="evModalTitle">Edit event</h3>
+      <label class="modal-label">Title</label>
+      <input type="text" id="mTitle" placeholder="Event title" />
+      <div class="modal-row">
+        <div><label class="modal-label">Date</label><input type="date" id="mDate" /></div>
+        <div><label class="modal-label">Start</label><input type="time" id="mTime" /></div>
+        <div><label class="modal-label">Length</label>
+          <select id="mDur">
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">1 hr</option>
+            <option value="90">1.5 hr</option>
+            <option value="120">2 hr</option>
+            <option value="180">3 hr</option>
+            <option value="240">4 hr</option>
+            <option value="420">7 hr</option>
+          </select>
+        </div>
+      </div>
+      <label class="modal-label">Type</label>
+      <select id="mType">
+        <option value="study">Study</option>
+        <option value="test">Test / FL</option>
+        <option value="application">Application</option>
+        <option value="personal">Personal</option>
+      </select>
+      <div class="modal-actions">
+        <button class="btn danger" id="mDelete">Delete</button>
+        <span style="flex:1"></span>
+        <button class="btn ghost" id="mCancel">Cancel</button>
+        <button class="btn" id="mSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="core.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
