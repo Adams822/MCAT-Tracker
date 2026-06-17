@@ -1,0 +1,736 @@
+:root {
+  --bg: #0f1115;
+  --bg-2: #161922;
+  --panel: #1b1f2a;
+  --panel-2: #20242f;
+  --line: #2a2f3c;
+  --text: #e8ebf2;
+  --muted: #8b93a7;
+  --accent: #5b8def;
+  --accent-2: #4ad0a3;
+  --high: #ef5b6e;
+  --med: #f0b54a;
+  --low: #6c7689;
+  --red: #ef5b6e;
+  --yellow: #f0b54a;
+  --green: #4ad0a3;
+  --shadow: 0 6px 24px rgba(0,0,0,0.35);
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 240px; background: var(--bg-2); border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; padding: 24px 18px;
+  position: sticky; top: 0; height: 100vh;
+}
+.brand { margin-bottom: 24px; }
+.brand-mark {
+  font-size: 22px; font-weight: 800; letter-spacing: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.brand-sub { font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+
+.nav { display: flex; flex-direction: column; gap: 3px; }
+.nav-btn {
+  display: flex; align-items: center; gap: 10px; background: transparent; border: none;
+  color: var(--muted); font-size: 14px; padding: 10px 12px; border-radius: 10px;
+  cursor: pointer; text-align: left; transition: all .15s;
+}
+.nav-btn:hover { background: var(--panel); color: var(--text); }
+.nav-btn.active { background: var(--panel-2); color: var(--text); }
+.nav-ico { width: 18px; display: inline-block; text-align: center; opacity: .8; }
+
+.streak-box {
+  margin-top: 20px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px; text-align: center;
+}
+.streak-num { font-size: 32px; font-weight: 800; color: var(--accent-2); line-height: 1; }
+.streak-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.streak-sub { font-size: 12px; color: var(--text); margin-top: 8px; }
+
+.sidebar-foot { margin-top: auto; padding-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+.ghost-btn {
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+  font-size: 12px; padding: 7px; border-radius: 8px; cursor: pointer; transition: all .15s;
+}
+.ghost-btn:hover { color: var(--text); border-color: var(--accent); }
+.foot-note { font-size: 11px; color: var(--muted); text-align: center; margin-top: 6px; }
+
+/* Main */
+.main { flex: 1; padding: 36px 44px; max-width: 1100px; }
+.view { display: none; animation: fade .2s ease; }
+.view.active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.view-head { margin-bottom: 22px; }
+.view-head h1 { font-size: 26px; font-weight: 700; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.view-head p { margin-top: 4px; font-size: 14px; }
+
+/* Quote */
+.quote-bar {
+  background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent-2);
+  border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; font-size: 15px;
+  font-style: italic; color: var(--text); display: flex; gap: 8px; align-items: baseline;
+}
+.quote-mark { font-size: 28px; color: var(--accent-2); line-height: 0; }
+
+/* Countdown */
+.countdown-card {
+  background: linear-gradient(135deg, #1d2433, #181b24); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 22px;
+}
+.countdown-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.countdown-label { font-size: 12px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.countdown-date { font-size: 18px; font-weight: 600; margin-top: 4px; }
+.countdown-edit input { background: var(--panel); border: 1px solid var(--line); color: var(--text); padding: 8px 10px; border-radius: 8px; font-size: 13px; }
+.countdown-timer { display: flex; gap: 18px; margin-top: 20px; }
+.cd-unit { text-align: center; min-width: 70px; }
+.cd-unit span {
+  display: block; font-size: 42px; font-weight: 800;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent; font-variant-numeric: tabular-nums;
+}
+.cd-unit label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+/* Dash grid */
+.dash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+.stat-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+.stat-num { font-size: 26px; font-weight: 700; }
+.stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.dash-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+/* Panels */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 18px; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.panel-head h2 { font-size: 16px; font-weight: 600; }
+
+.mini-tasks, .mini-topics { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.mini-tasks li, .mini-topics li { display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.mini-tasks li:last-child, .mini-topics li:last-child { border-bottom: none; }
+.empty { color: var(--muted); font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot.high { background: var(--high); } .dot.med { background: var(--med); } .dot.low { background: var(--low); }
+.tag { font-size: 11px; padding: 2px 7px; border-radius: 6px; background: var(--panel-2); color: var(--muted); flex-shrink: 0; }
+
+/* Heatmap */
+.heatmap-wrap { overflow-x: auto; padding-bottom: 6px; }
+.heatmap { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 14px); gap: 3px; }
+.heat-cell { width: 14px; height: 14px; border-radius: 3px; background: var(--panel-2); }
+.heat-cell.lvl0 { background: #232733; }
+.heat-cell.lvl1 { background: #1e5c47; }
+.heat-cell.lvl2 { background: #2f8f6b; }
+.heat-cell.lvl3 { background: #3fb88a; }
+.heat-cell.lvl4 { background: #4ad0a3; }
+.heat-legend { display: flex; align-items: center; gap: 4px; margin-top: 12px; }
+.heat-legend .heat-cell { width: 12px; height: 12px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+.tab { background: var(--panel); border: 1px solid var(--line); color: var(--muted); padding: 9px 18px; border-radius: 9px; cursor: pointer; font-size: 14px; transition: all .15s; }
+.tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Forms */
+.add-form { display: flex; gap: 10px; margin-bottom: 18px; }
+.add-form.wide { flex-wrap: wrap; }
+.add-form input[type="text"] { flex: 1; min-width: 200px; }
+input, select, textarea { background: var(--panel); border: 1px solid var(--line); color: var(--text); padding: 11px 13px; border-radius: 9px; font-size: 14px; font-family: inherit; outline: none; }
+input:focus, select:focus { border-color: var(--accent); }
+.btn { background: var(--accent); color: #fff; border: none; cursor: pointer; padding: 11px 20px; border-radius: 9px; font-size: 14px; font-weight: 600; transition: opacity .15s; }
+.btn:hover { opacity: .9; }
+.btn.ghost { background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
+.btn.ghost:hover { color: var(--text); border-color: var(--accent); opacity: 1; }
+.link-btn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 13px; }
+.link-btn:hover { text-decoration: underline; }
+
+/* Task list */
+.task-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.task-item { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 13px 15px; transition: all .15s; }
+.task-item.done { opacity: .5; }
+.task-item.done .task-text { text-decoration: line-through; }
+.task-check { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--line); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: transparent; transition: all .15s; }
+.task-check.checked { background: var(--green); border-color: var(--green); color: #0f1115; font-weight: bold; }
+.task-text { flex: 1; font-size: 14px; }
+.prio-bar { width: 4px; height: 26px; border-radius: 4px; flex-shrink: 0; }
+.prio-bar.high { background: var(--high); } .prio-bar.med { background: var(--med); } .prio-bar.low { background: var(--low); }
+.del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; }
+.del-btn:hover { color: var(--high); }
+.list-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; }
+.foot-actions { display: flex; gap: 16px; }
+
+/* Pomodoro */
+.pomo-card {
+  background: linear-gradient(135deg, #1d2433, #181b24); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 36px; text-align: center; box-shadow: var(--shadow); margin-bottom: 18px;
+}
+.pomo-mode { font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; }
+.pomo-mode.break { color: var(--accent-2); }
+.pomo-time { font-size: 84px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 8px 0 20px; letter-spacing: 2px; }
+.pomo-controls { display: flex; gap: 10px; justify-content: center; }
+.pomo-round { margin-top: 18px; font-size: 13px; color: var(--muted); }
+.pomo-settings { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.pomo-manual { display: flex; gap: 10px; align-items: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+
+/* Topics */
+.filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.chip { background: var(--panel); border: 1px solid var(--line); color: var(--muted); padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all .15s; }
+.chip.active { background: var(--panel-2); color: var(--text); border-color: var(--accent); }
+.topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.topic-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; position: relative; border-left: 4px solid var(--line); }
+.topic-card.new { border-left-color: var(--red); }
+.topic-card.reviewing { border-left-color: var(--yellow); }
+.topic-card.solid { border-left-color: var(--green); }
+.topic-card .t-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; padding-right: 20px; }
+.topic-card .t-meta { display: flex; gap: 8px; align-items: center; }
+.topic-card select { padding: 5px 8px; font-size: 12px; }
+.topic-card .del-btn { position: absolute; top: 12px; right: 12px; }
+
+/* Wrong answers */
+.wrong-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 18px; }
+.score-field { display: flex; flex-direction: column; gap: 5px; }
+.score-field.grow { flex: 1; min-width: 200px; }
+.score-field.grow input { width: 100%; }
+.score-field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.score-field input { width: 150px; }
+.score-field.small input, .score-field.small select { width: 80px; }
+.repeat-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.repeat-tag { background: rgba(239,91,110,.15); border: 1px solid var(--red); color: #ff9aa6; padding: 5px 12px; border-radius: 20px; font-size: 13px; }
+.wrong-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.wrong-table th { text-align: left; color: var(--muted); font-size: 11px; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: .5px; }
+.wrong-table td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.miss-count { display: inline-block; min-width: 22px; text-align: center; background: var(--panel-2); border-radius: 12px; padding: 2px 6px; font-size: 12px; }
+.miss-count.repeat { background: rgba(239,91,110,.2); color: #ff9aa6; font-weight: 700; }
+.status-pill { font-size: 12px; padding: 3px 9px; border-radius: 12px; cursor: pointer; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
+.status-pill.open { color: var(--yellow); border-color: var(--yellow); }
+.status-pill.resolved { color: var(--green); border-color: var(--green); }
+
+/* Scores */
+.score-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
+.chart-panel .chart-wrap { width: 100%; }
+#scoreChart { width: 100%; height: 240px; display: block; }
+.score-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.score-table th { text-align: left; color: var(--muted); font-size: 12px; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: .5px; }
+.score-table td { padding: 11px 10px; border-bottom: 1px solid var(--line); }
+.score-table tr:last-child td { border-bottom: none; }
+.score-total { font-weight: 700; color: var(--accent-2); }
+
+/* Application */
+.app-columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.app-col { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; min-height: 200px; }
+.app-col h3 { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+.app-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.app-card { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 12px; font-size: 14px; position: relative; }
+.app-card .a-text { padding-right: 18px; }
+.app-card .a-actions { display: flex; gap: 8px; margin-top: 8px; }
+.app-card .a-actions button { background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; }
+.app-card .a-actions button:hover { color: var(--text); border-color: var(--accent); }
+.app-card .del-btn { position: absolute; top: 8px; right: 8px; }
+
+/* Calendar */
+.cal-form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.cal-form input[type="text"] { flex: 1; min-width: 180px; }
+.cal-gen { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.cal-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.cal-views { display: flex; gap: 6px; }
+.cal-nav { display: flex; gap: 6px; }
+.cal-nav .btn { padding: 8px 14px; }
+.cal-label { font-size: 17px; font-weight: 600; margin-left: auto; }
+
+.cal-types { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.cal-type-key { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.cal-type-key .swatch { width: 10px; height: 10px; border-radius: 3px; }
+
+.ev { border-radius: 6px; padding: 3px 7px; font-size: 12px; color: #fff; cursor: pointer; position: relative; line-height: 1.3; }
+.ev.study { background: var(--accent); }
+.ev.test { background: var(--high); }
+.ev.application { background: var(--green); color: #0f1115; }
+.ev.personal { background: var(--low); }
+.ev .ev-time { font-weight: 700; opacity: .9; margin-right: 4px; }
+.ev .ev-x { position: absolute; top: 2px; right: 4px; opacity: 0; font-size: 11px; }
+.ev:hover .ev-x { opacity: .8; }
+
+/* Month grid */
+.cal-month { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--line); }
+.cal-weekdays div { padding: 10px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; text-align: center; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.cal-cell { min-height: 96px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 6px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; transition: background .12s; }
+.cal-cell:nth-child(7n) { border-right: none; }
+.cal-cell:hover { background: var(--panel-2); }
+.cal-cell.other { opacity: .35; }
+.cal-cell.today { background: rgba(91,141,239,.12); }
+.cal-cell .cell-num { font-size: 13px; font-weight: 600; align-self: flex-end; }
+.cal-cell.today .cell-num { color: var(--accent); }
+
+/* Week view */
+.cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.cal-week-col { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-height: 240px; display: flex; flex-direction: column; gap: 6px; }
+.cal-week-col.today { border-color: var(--accent); }
+.cal-week-head { text-align: center; font-size: 12px; color: var(--muted); padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.cal-week-head .wk-day { font-size: 18px; font-weight: 700; color: var(--text); }
+.cal-week-col.today .wk-day { color: var(--accent); }
+.cal-week-col .add-mini { margin-top: auto; font-size: 11px; color: var(--muted); background: none; border: 1px dashed var(--line); border-radius: 6px; padding: 4px; cursor: pointer; }
+.cal-week-col .add-mini:hover { color: var(--text); border-color: var(--accent); }
+
+/* Day view */
+.cal-day { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+.cal-day-empty { color: var(--muted); padding: 30px; text-align: center; }
+.day-event { display: flex; align-items: center; gap: 14px; padding: 12px 8px; border-bottom: 1px solid var(--line); }
+.day-event:last-child { border-bottom: none; }
+.day-event .de-time { font-size: 14px; font-weight: 700; color: var(--accent); width: 70px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.day-event .de-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.day-event .de-title { flex: 1; font-size: 15px; }
+.day-event .de-type { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+
+/* Resources */
+.res-group { margin-bottom: 22px; }
+.res-group h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--accent-2); }
+.res-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.res-card { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 14px 16px; color: var(--text); text-decoration: none; transition: all .15s; }
+.res-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.res-ico { font-size: 22px; flex-shrink: 0; }
+.res-name { font-size: 14px; font-weight: 500; }
+.res-type { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+
+@media (max-width: 880px) {
+  .dash-grid { grid-template-columns: repeat(2, 1fr); }
+  .dash-row, .app-columns { grid-template-columns: 1fr; }
+  .main { padding: 24px; }
+  .pomo-time { font-size: 60px; }
+}
+
+/* ============================================================
+   THEMES + ANIMATION + TIME-GRID CALENDAR + MODAL
+   ============================================================ */
+
+/* Light theme */
+html[data-theme="light"] {
+  --bg: #eef1f7;
+  --bg-2: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f0f3f9;
+  --line: #e0e4ee;
+  --text: #1b2130;
+  --muted: #6b7385;
+  --accent: #3b6fe0;
+  --accent-2: #11a37a;
+  --high: #e5484d;
+  --med: #d99016;
+  --low: #97a0b3;
+  --red: #e5484d;
+  --yellow: #d99016;
+  --green: #11a37a;
+  --shadow: 0 6px 20px rgba(40,60,120,0.10);
+}
+html[data-theme="light"] .countdown-card,
+html[data-theme="light"] .pomo-card { background: linear-gradient(135deg, #eaf0ff, #ffffff); }
+html[data-theme="light"] .cd-unit span,
+html[data-theme="light"] .brand-mark { -webkit-text-fill-color: transparent; }
+html[data-theme="light"] .heat-cell.lvl0 { background: #e6eaf2; }
+html[data-theme="light"] .ev.application,
+html[data-theme="light"] .tg-ev.application { color: #0b3b2c; }
+
+/* smooth theme + global transitions */
+html, body { transition: background .35s ease, color .35s ease; }
+.panel, .stat-card, .task-item, .topic-card, .res-card, .app-card,
+.nav-btn, .btn, .chip, .tab, .cal-cell, .tg-ev, .countdown-card, .pomo-card,
+.sidebar, .quote-bar, input, select { transition: background .2s, color .2s, border-color .2s, transform .15s, box-shadow .2s, opacity .2s; }
+
+/* entrance animations */
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes popIn { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
+.view.active > .view-head { animation: slideUp .3s ease both; }
+.view.active .panel,
+.view.active .stat-card,
+.view.active .countdown-card,
+.view.active .quote-bar,
+.view.active .pomo-card { animation: slideUp .4s ease both; }
+.view.active .stat-card:nth-child(1) { animation-delay: .02s; }
+.view.active .stat-card:nth-child(2) { animation-delay: .07s; }
+.view.active .stat-card:nth-child(3) { animation-delay: .12s; }
+.view.active .stat-card:nth-child(4) { animation-delay: .17s; }
+
+/* interactive lift */
+.stat-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: var(--shadow); }
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0) scale(.97); }
+.btn.danger { background: var(--high); }
+.nav-btn:hover { transform: translateX(2px); }
+.task-item:hover { border-color: var(--accent); transform: translateX(2px); }
+.topic-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.chip:hover, .tab:hover { transform: translateY(-1px); }
+.streak-num { transition: transform .2s; }
+.streak-box:hover .streak-num { transform: scale(1.08); }
+
+/* ---- Time-grid calendar (Google/TickTick style) ---- */
+.tg-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); animation: popIn .25s ease both; }
+
+.tg-head { display: flex; border-bottom: 1px solid var(--line); }
+.tg-head-axis { width: 58px; flex-shrink: 0; }
+.tg-head-days { flex: 1; display: flex; }
+.tg-head-day { flex: 1; text-align: center; padding: 8px 4px; border-left: 1px solid var(--line); }
+.tg-head-day .thd-name { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.tg-head-day .thd-num { font-size: 20px; font-weight: 700; margin-top: 2px; }
+.tg-head-day.today .thd-num { background: var(--accent); color: #fff; width: 34px; height: 34px; line-height: 34px; border-radius: 50%; margin: 2px auto 0; }
+.tg-head-day.today .thd-name { color: var(--accent); }
+
+.tg-allday { display: flex; border-bottom: 1px solid var(--line); min-height: 26px; }
+.tg-allday-axis { width: 58px; flex-shrink: 0; font-size: 10px; color: var(--muted); text-align: right; padding: 5px 6px 0 0; text-transform: uppercase; }
+.tg-allday-days { flex: 1; display: flex; }
+.tg-allday-col { flex: 1; border-left: 1px solid var(--line); padding: 3px; display: flex; flex-direction: column; gap: 2px; }
+
+.tg-scroll { height: 600px; overflow-y: auto; position: relative; }
+.tg { display: flex; }
+.tg-axis { width: 58px; flex-shrink: 0; }
+.tg-hour { height: 48px; position: relative; }
+.tg-hour span { position: absolute; top: -7px; right: 8px; font-size: 10px; color: var(--muted); white-space: nowrap; }
+.tg-days { flex: 1; display: flex; position: relative; }
+.tg-col {
+  flex: 1; position: relative; border-left: 1px solid var(--line); cursor: copy;
+  background: repeating-linear-gradient(to bottom, transparent, transparent 47px, var(--line) 47px, var(--line) 48px);
+}
+
+.tg-ev {
+  position: absolute; border-radius: 7px; padding: 3px 7px; font-size: 11.5px; color: #fff;
+  overflow: hidden; cursor: grab; box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.18); user-select: none;
+}
+.tg-ev:hover { filter: brightness(1.08); box-shadow: 0 3px 10px rgba(0,0,0,.35); z-index: 20; }
+.tg-ev.dragging { opacity: .9; cursor: grabbing; z-index: 60; pointer-events: none; box-shadow: 0 8px 20px rgba(0,0,0,.4); }
+.tg-ev.study { background: var(--accent); }
+.tg-ev.test { background: var(--high); }
+.tg-ev.application { background: var(--green); color: #06281d; }
+.tg-ev.personal { background: var(--low); }
+.tg-ev.locked { cursor: not-allowed; }
+.tg-ev .tg-ev-time { font-weight: 700; opacity: .9; font-size: 10px; }
+.tg-ev .tg-ev-title { font-weight: 500; line-height: 1.25; }
+.tg-ev .re-handle { position: absolute; bottom: 0; left: 0; right: 0; height: 8px; cursor: ns-resize; }
+.tg-ev .re-handle::after { content: ""; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 22px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.5); opacity: 0; }
+.tg-ev:hover .re-handle::after { opacity: 1; }
+
+.tg-now { position: absolute; left: 0; right: 0; height: 2px; background: #ea4335; z-index: 40; pointer-events: none; }
+.tg-now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #ea4335; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(8,10,16,.55); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 200; animation: fadeOverlay .18s ease; }
+.modal-overlay[hidden] { display: none; }
+@keyframes fadeOverlay { from { opacity: 0; } to { opacity: 1; } }
+.modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px; width: 420px; max-width: 92vw; box-shadow: 0 20px 60px rgba(0,0,0,.45); animation: popIn .2s ease; }
+.modal h3 { font-size: 18px; margin-bottom: 16px; }
+.modal-label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 5px; }
+.modal input, .modal select { width: 100%; }
+.modal-row { display: flex; gap: 10px; }
+.modal-row > div { flex: 1; }
+.modal-actions { display: flex; align-items: center; gap: 8px; margin-top: 22px; }
+
+/* ---- Resources ---- */
+.res-card { cursor: pointer; }
+
+/* ---- Practice Questions (Req 3, 4) ---- */
+/* Entry form: same flex/align-end pattern as .score-form / .wrong-form */
+.practice-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
+
+/* Recorded-sets list: mirrors .score-table / .wrong-table styling */
+.practice-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.practice-table th { text-align: left; color: var(--muted); font-size: 11px; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: .5px; }
+.practice-table td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.practice-table tr:last-child td { border-bottom: none; }
+.practice-pct { font-weight: 700; color: var(--accent-2); }
+
+/* Accuracy charts: one viewBox-driven svg per .chart-panel .chart-wrap (Req 4.1-4.4) */
+.chart-panel .chart-wrap svg { width: 100%; height: 240px; display: block; }
+
+/* Reusable per-metric empty-state shown in place of a chart/list when there is no data (Req 4.7).
+   Muted + centered; theme-aware via var()s so it works in dark and light. */
+.empty-state { color: var(--muted); text-align: center; padding: 28px 16px; font-size: 13px; }
+
+/* ---- Error Log enhancements (Req 6) ---- */
+/* Needs-review checkbox + label sit inline & centered, aligned with the other
+   .score-field controls (which use align-items: flex-end on the form row). */
+.score-field.check { justify-content: flex-end; }
+.score-field.check label {
+  display: flex; align-items: center; gap: 7px;
+  text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--text);
+  padding: 11px 0; cursor: pointer;
+}
+.score-field.check input[type="checkbox"] {
+  width: auto; margin: 0; padding: 0; cursor: pointer; accent-color: var(--accent);
+}
+
+/* Explanation / takeaway textareas grow to the full width of their field
+   and get a sensible minimum height while staying vertically resizable. */
+.score-field.grow textarea {
+  width: 100%; min-height: 64px; resize: vertical; line-height: 1.4;
+}
+
+/* Mistakes-by-category summary: a flex-wrap row of small count chips reusing
+   the .tag look. Badges are theme-aware through the CSS custom properties. */
+#categoryCounts { display: flex; flex-wrap: wrap; gap: 8px; }
+.cat-count {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+  border-radius: 20px; padding: 5px 12px; font-size: 12px;
+}
+.cat-count .n { font-weight: 700; color: var(--accent-2); font-variant-numeric: tabular-nums; }
+/* Defensive fallback so direct children render as inline badges even if the
+   render layer emits plain elements rather than .cat-count nodes. */
+#categoryCounts > *:not(.cat-count) {
+  display: inline-block; background: var(--panel-2); border: 1px solid var(--line);
+  color: var(--muted); border-radius: 20px; padding: 5px 12px; font-size: 12px;
+}
+
+/* Inline category <select> inside a Wrong Answers table row, sized to fit the
+   new Category column without forcing the row taller. */
+.wrong-table td .row-cat-select {
+  width: 100%; max-width: 150px; padding: 6px 8px; font-size: 12px;
+}
+
+/* ---- Full-Length enhancements (Req 7) ---- */
+/* Testing-conditions checkbox group: a labeled field whose checkboxes wrap into
+   a row, mirroring .score-field.check from the Error Log styles (inline, not
+   uppercased). Theme-aware via the shared CSS custom properties. */
+.score-conditions { flex: 1; min-width: 240px; }
+.cond-checks { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 9px 0; }
+.cond-check {
+  display: inline-flex; align-items: center; gap: 7px;
+  text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--text);
+  cursor: pointer;
+}
+.cond-check input[type="checkbox"] {
+  width: auto; margin: 0; padding: 0; cursor: pointer; accent-color: var(--accent);
+}
+
+/* Biggest-lessons textarea grows to the full width of its field with a sensible
+   minimum height while staying vertically resizable (matches .score-field.grow). */
+.score-lessons { flex: 1; min-width: 240px; }
+.score-lessons textarea {
+  width: 100%; min-height: 72px; resize: vertical; line-height: 1.4;
+}
+
+/* Per-section score-trend small multiples: a responsive grid of four .chart-panel
+   cells, each with a small/muted <h3> heading, an svg trend, and an empty-state. */
+.chart-grid, .section-trend-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;
+}
+.section-trend-grid .chart-panel {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+}
+.chart-panel h3 {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+/* Small multiples are shorter than the full-width charts; reuse the existing
+   .chart-panel .chart-wrap svg rule but trim the height inside the trend grid. */
+.section-trend-grid .chart-panel .chart-wrap svg { height: 160px; }
+
+/* ---- Content Review Tracker (Req 5) ---- */
+/* Per-status count summary: a flex-wrap row of small status badges reusing the
+   .cat-count chip look. Theme-aware through the shared CSS custom properties. */
+#contentStatusCounts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.status-count {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+  border-radius: 20px; padding: 5px 12px; font-size: 12px;
+}
+.status-count .n { font-weight: 700; color: var(--accent-2); font-variant-numeric: tabular-nums; }
+/* Subtle status color-cue via a small leading dot, reusing the theme vars.
+   Keyed off a data-status attribute so it stays theme-safe and degrades gracefully. */
+.status-count::before {
+  content: ""; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted); flex-shrink: 0;
+}
+.status-count[data-status="not started"]::before { background: var(--low); }
+.status-count[data-status="in progress"]::before { background: var(--accent); }
+.status-count[data-status="reviewed"]::before { background: var(--yellow); }
+.status-count[data-status="needs practice"]::before { background: var(--red); }
+.status-count[data-status="mastered"]::before { background: var(--green); }
+/* Defensive fallback so direct children render as inline badges even if the
+   render layer emits plain elements rather than .status-count nodes. */
+#contentStatusCounts > *:not(.status-count) {
+  display: inline-block; background: var(--panel-2); border: 1px solid var(--line);
+  color: var(--muted); border-radius: 20px; padding: 5px 12px; font-size: 12px;
+}
+
+/* Subject tree: each of the four sections is a card (panel/line), and within it
+   the subject groups are stacked with muted/uppercase headings. */
+#contentTree { display: flex; flex-direction: column; gap: 14px; }
+.content-section {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 18px 20px;
+}
+.content-section > h2,
+.content-section > .content-section-title {
+  font-size: 15px; font-weight: 600; color: var(--accent-2); margin-bottom: 12px;
+}
+.content-group { margin-bottom: 14px; }
+.content-group:last-child { margin-bottom: 0; }
+.content-group > h3,
+.content-group > .content-group-title {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+}
+
+/* Topic rows: flex rows with the label growing and the status select on the
+   right, separated by subtle borders (matches the .mini-tasks li pattern). */
+.content-topic-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0; border-bottom: 1px solid var(--line);
+  border-left: 3px solid transparent; padding-left: 10px; margin-left: -10px;
+}
+.content-topic-row:last-child { border-bottom: none; }
+.content-topic-row .content-topic-label,
+.content-topic-row > span:first-child { flex: 1; font-size: 14px; }
+/* Subtle left-border status color-cue on each row, theme-safe via the vars. */
+.content-topic-row[data-status="in progress"] { border-left-color: var(--accent); }
+.content-topic-row[data-status="reviewed"] { border-left-color: var(--yellow); }
+.content-topic-row[data-status="needs practice"] { border-left-color: var(--red); }
+.content-topic-row[data-status="mastered"] { border-left-color: var(--green); }
+
+/* Status <select> sized small to fit inline on the right of each row.
+   Defensive: also targets any select inside #contentTree so styling applies
+   even if the render layer's class name differs slightly. */
+.content-status-select,
+#contentTree select {
+  width: auto; min-width: 130px; padding: 6px 8px; font-size: 12px; flex-shrink: 0;
+}
+
+/* Add-custom-topic form: consistent with .add-form / .score-form. Section select
+   + text input (grows) + Add button on one wrapping row. */
+#contentCustomForm {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 18px;
+}
+#contentCustomForm input[type="text"] { flex: 1; min-width: 200px; }
+
+/* ---- Analytics (Req 8) ---- */
+/* The chart panels (#anChartBySection, #anChartByTopic, #anChartVolume,
+   #anChartHours, #anChartTotalTrend) reuse the existing
+   .chart-panel .chart-wrap svg rule (240px height) — no new chart rule needed.
+   The render layer (task 8.4) is not implemented yet, so the ranked-list rules
+   below use defensive child selectors so styling holds regardless of the exact
+   class names the renderer emits. */
+
+/* Weakness ranking + Mistake frequency: clean rows where the label grows and the
+   value is right-aligned with tabular figures, separated by subtle bottom borders
+   (matches the .mini-tasks li / .content-topic-row pattern). */
+#anWeakness .rank-row,
+#anMistakes .freq-row,
+#anWeakness > *,
+#anMistakes > * {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 2px; border-bottom: 1px solid var(--line);
+  font-size: 14px; color: var(--text);
+}
+#anWeakness > *:last-child,
+#anMistakes > *:last-child { border-bottom: none; }
+
+/* Label (topic / category name) grows to fill the row. */
+#anWeakness .rank-label,
+#anMistakes .freq-label,
+#anWeakness .rank-row > :first-child,
+#anMistakes .freq-row > :first-child,
+#anWeakness > * > :first-child,
+#anMistakes > * > :first-child { flex: 1; min-width: 0; }
+
+/* Value (accuracy pct / count) right-aligned, tabular, muted-strong accent. */
+#anWeakness .rank-value,
+#anMistakes .freq-value,
+#anWeakness .rank-row > :last-child,
+#anMistakes .freq-row > :last-child,
+#anWeakness > * > :last-child,
+#anMistakes > * > :last-child {
+  flex-shrink: 0; text-align: right;
+  font-weight: 700; color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Secondary detail (e.g. "324 attempted") stays muted when present. */
+#anWeakness .rank-sub,
+#anMistakes .freq-sub { color: var(--muted); font-size: 12px; flex-shrink: 0; }
+
+/* Predicted score range: a prominent accent stat, consistent with the
+   .stat-num / .score-total idioms. Defensive selectors cover whatever element
+   the renderer drops in (a single value, a low–high range, or wrapped spans). */
+#anPredicted,
+#anPredicted .predicted-range {
+  font-size: 34px; font-weight: 800; color: var(--accent-2);
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+/* A trailing label/caption inside the prediction stays small + muted. */
+#anPredicted .predicted-label,
+#anPredicted small {
+  font-size: 12px; font-weight: 500; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+
+/* ---- CARS Tracker (Req 10) ---- */
+/* Entry form: same flex/align-end pattern as .score-form / .practice-form. */
+.cars-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
+
+/* Question-types fieldset: shed the heavy default <fieldset> chrome for a
+   subtle var(--line) frame; the legend reads as a muted field label and the
+   checkbox labels wrap inline, consistent with the .cond-check idiom. */
+.car-qtypes {
+  border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px 10px;
+  min-width: 240px;
+}
+.car-qtypes legend {
+  font-size: 11px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .5px; padding: 0 6px;
+}
+.car-qtypes label {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; color: var(--text); cursor: pointer;
+  margin-right: 14px;
+}
+.car-qtype {
+  width: auto; margin: 0; padding: 0; cursor: pointer; accent-color: var(--accent);
+}
+
+/* Recorded-passages list: mirrors .score-table / .practice-table styling. */
+.cars-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cars-table th { text-align: left; color: var(--muted); font-size: 11px; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: .5px; }
+.cars-table td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.cars-table tr:last-child td { border-bottom: none; }
+
+/* Average minutes per passage: a prominent accent stat, consistent with the
+   .stat-num / .score-total idioms. Defensive selectors cover whatever element
+   the render layer drops in (a bare value or a wrapped span). */
+#carsAvgMinutes,
+#carsAvgMinutes .stat-num {
+  font-size: 34px; font-weight: 800; color: var(--accent-2);
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+/* A trailing unit/label inside the stat stays small + muted. */
+#carsAvgMinutes .stat-label,
+#carsAvgMinutes small {
+  font-size: 12px; font-weight: 500; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+
+/* Accuracy by question type: a flex-wrap row of small badges reusing the
+   .cat-count chip look (type label + accent percentage). Theme-aware through
+   the shared CSS custom properties. */
+#carsAccByType { display: flex; flex-wrap: wrap; gap: 8px; }
+.qtype-acc,
+#carsAccByType > * {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+  border-radius: 20px; padding: 5px 12px; font-size: 12px;
+}
+.qtype-acc .pct,
+#carsAccByType .pct { font-weight: 700; color: var(--accent-2); font-variant-numeric: tabular-nums; }

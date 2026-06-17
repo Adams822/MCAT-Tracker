@@ -1,0 +1,15 @@
+{
+  "name": "mcat-tracker-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dev-only property-based and example test harness for the MCAT Command Center. NOT shipped with the app.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "fast-check": "^3.22.0"
+  }
+}
